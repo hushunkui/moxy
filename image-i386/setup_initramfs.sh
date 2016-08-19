@@ -7,10 +7,13 @@ BUILD=${1:-Specify build directory}
 BASEDIR=$PWD
 INITRAM=$BUILD/initramfs_base
 
+ARCH=$( dpkg --print-architecture )
+KERN=$( uname --kernel-release )
+
 mkdir -p $BUILD
 mkdir -p $INITRAM
 
-if /bin/false ; then
+if /bin/true ; then
 
 if ! test -f $BUILD/busybox/bin/busybox ; then
 pushd $BUILD
@@ -27,14 +30,15 @@ fi
 
 if ! test -f $BUILD/dropbear/sbin/dropbear ; then
 pushd $BUILD
-    #wget https://matt.ucc.asn.au/dropbear/releases/dropbear-2016.74.tar.bz2
-    #tar -xvf dropbear-2016.74.tar.bz2
+    test -d dropbear-2016.74 || (
+        wget https://matt.ucc.asn.au/dropbear/releases/dropbear-2016.74.tar.bz2 &&
+        tar -xvf dropbear-2016.74.tar.bz2 )
     pushd dropbear-2016.74/
         mkdir -p zlibincludes
-        cp /usr/include/zlib.h /usr/include/i386-linux-gnu/zconf.h zlibincludes
+        cp /usr/include/zlib.h /usr/include/${ARCH}-linux-gnu/zconf.h zlibincludes
         export CFLAGS="-Izlibincludes -I../zlibincludes"
-        export LDFLAGS=/usr/lib/i386-linux-gnu/libz.a
-        # STATIC=1 ./configure --prefix=$BUILD/dropbear
+        export LDFLAGS=/usr/lib/${ARCH}-linux-gnu/libz.a
+        STATIC=1 ./configure --prefix=$BUILD/dropbear
         make STATIC=1
         make install STATIC=1
     popd
@@ -67,11 +71,19 @@ fi
 rm -rf $INITRAM
 
 echo "Setting up directory hierarchy"
-mkdir -p $INITRAM/{bin,sbin,etc/dropbear,lib,proc,sys,root,newroot,usr/bin,usr/sbin}
+mkdir -p $INITRAM/{bin,sbin,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
 cp $BUILD/busybox/bin/busybox $INITRAM/bin
 cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
 cp $BUILD/kexec/sbin/kexec $INITRAM/sbin
 cp $BUILD/keys/* $INITRAM/etc/dropbear
+
+# Strace
+cp /usr/bin/strace $INITRAM/usr/bin/
+cp /lib/${ARCH}-linux-gnu/libc.so.6 $INITRAM/lib/${ARCH}-linux-gnu
+cp /lib/ld-linux.so.2 $INITRAM/lib
+cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
+cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
+cp /etc/nsswitch.conf $INITRAM/etc
 
 ln -s busybox $INITRAM/bin/sh
 touch $INITRAM/etc/mdev.conf
@@ -80,7 +92,7 @@ cp init.sh $INITRAM/
 chmod +x $INITRAM/init.sh
 ln -s init.sh $INITRAM/init
 
-MODBASE=lib/modules/4.4.0-21-generic
+MODBASE=lib/modules/${KERN}
 MODPATH=$MODBASE/kernel/drivers/net/ethernet/intel
 mkdir -p $INITRAM/$MODPATH/e1000
 mkdir -p $INITRAM/$MODPATH/e1000e
@@ -108,9 +120,9 @@ popd
 
 chown -R root:root $INITRAM 
 
-#pushd $BUILD
-#  git clone git://git.ipxe.org/ipxe.git
-#popd
+pushd $BUILD
+  test -d ipxe || git clone git://git.ipxe.org/ipxe.git
+popd
 
 
 pushd $BUILD
