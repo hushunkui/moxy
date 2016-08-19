@@ -6,6 +6,7 @@
 # Mount things needed by this script
 /bin/mount -t proc proc /proc
 /bin/mount -t sysfs sysfs /sys
+/bin/mount -t devpts /dev/pts /dev/pts
 
 # Disable kernel messages from popping onto the screen
 # echo 0 > /proc/sys/kernel/printk
@@ -59,6 +60,8 @@ route add default gw 192.168.0.1
 # ip route add default via 192.168.0.1
 
 echo "root:6OBjvdEuHx43.:0:0:Linux,,,:/root:/bin/sh" > /etc/passwd
+echo "root:x:0:root" > /etc/group
+
 dropbear
 mkdir -p /var/log
 syslogd
