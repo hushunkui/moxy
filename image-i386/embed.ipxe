@@ -1,0 +1,8 @@
+#!ipxe
+
+echo "OKAY"
+imgstat
+imgselect vmlinuz
+boot
+
+shell
