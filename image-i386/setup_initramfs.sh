@@ -7,7 +7,7 @@ BUILD=${1:-Specify build directory}
 BASEDIR=$PWD
 INITRAM=$BUILD/initramfs_base
 
-ARCH=$( dpkg --print-architecture )
+ARCH=$( arch | sed -e 's/i686/i386/' )
 KERN=$( uname --kernel-release )
 
 mkdir -p $BUILD
@@ -80,7 +80,8 @@ cp $BUILD/keys/* $INITRAM/etc/dropbear
 # Strace
 cp /usr/bin/strace $INITRAM/usr/bin/
 cp /lib/${ARCH}-linux-gnu/libc.so.6 $INITRAM/lib/${ARCH}-linux-gnu
-cp /lib/ld-linux.so.2 $INITRAM/lib
+test -f /lib/ld-linux.so.2 && cp /lib/ld-linux.so.2 $INITRAM/lib
+test -f /lib64/ld-linux-x86-64.so.2 && cp /lib64/ld-linux-x86-64.so.2 $INITRAM/lib
 cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
 cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
 cp /etc/nsswitch.conf $INITRAM/etc
