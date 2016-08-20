@@ -4,6 +4,7 @@ set -x
 set -e
 
 BUILD=${1:-Specify build directory}
+SSHKEY=${2:-authorized keys file}
 BASEDIR=$PWD
 INITRAM=$BUILD/initramfs_base
 
@@ -58,6 +59,22 @@ pushd $BUILD
 popd
 fi
 
+
+if ! test -f $BUILD/epoxy-get ; then
+pushd $BUILD
+  test -d go || (
+      ( test -f go1.7.linux-amd64.tar.gz || \
+          wget https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz ) &&
+      tar -xvf go1.7.linux-amd64.tar.gz  )
+  export GOROOT=$BUILD/go
+  export PATH=$PATH:$GOROOT/bin
+
+  CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go 
+  strip $BUILD/epoxy-get
+  upx --brute $BUILD/epoxy-get
+popd
+fi
+
 fi
 if /bin/true ; then
 
@@ -71,11 +88,23 @@ fi
 rm -rf $INITRAM
 
 echo "Setting up directory hierarchy"
-mkdir -p $INITRAM/{bin,sbin,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
+mkdir -p $INITRAM/{bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
 cp $BUILD/busybox/bin/busybox $INITRAM/bin
 cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
 cp $BUILD/kexec/sbin/kexec $INITRAM/sbin
+cp $BUILD/epoxy-get $INITRAM/bin
 cp $BUILD/keys/* $INITRAM/etc/dropbear
+
+
+# Certificates
+cp -L -r /etc/ssl/certs $INITRAM/etc/ssl/
+
+# ssh authorized keys.
+mkdir -p $INITRAM/root/.ssh
+cp $SSHKEY $INITRAM/root/.ssh/authorized_keys
+chown root:root $INITRAM/root/.ssh/authorized_keys
+chmod 700 $INITRAM/root/
+
 
 # Strace
 cp /usr/bin/strace $INITRAM/usr/bin/
