@@ -14,12 +14,24 @@ KERN=$( uname --kernel-release )
 mkdir -p $BUILD
 mkdir -p $INITRAM
 
+
+function unpack () {
+  dir=$1
+  url=$2
+  tgz=$( basename $url )
+  if ! test -d $dir ; then
+    if ! test -f $tgz ; then
+      wget $url
+      tar -xvf $tgz
+    fi
+  fi
+}
+
 if /bin/true ; then
 
 if ! test -f $BUILD/busybox/bin/busybox ; then
 pushd $BUILD
-    wget https://busybox.net/downloads/busybox-1.25.0.tar.bz2
-    tar -xvf busybox-1.25.0.tar.bz2 
+    unpack busybox-1.25.0 https://busybox.net/downloads/busybox-1.25.0.tar.bz2
     pushd busybox-1.25.0
         cp $BASEDIR/busybox_config ./.config
         make all
@@ -31,17 +43,17 @@ fi
 
 if ! test -f $BUILD/dropbear/sbin/dropbear ; then
 pushd $BUILD
-    test -d dropbear-2016.74 || (
-        wget https://matt.ucc.asn.au/dropbear/releases/dropbear-2016.74.tar.bz2 &&
-        tar -xvf dropbear-2016.74.tar.bz2 )
+    unpack dropbear-2016.74 https://matt.ucc.asn.au/dropbear/releases/dropbear-2016.74.tar.bz2
     pushd dropbear-2016.74/
         mkdir -p zlibincludes
         cp /usr/include/zlib.h /usr/include/${ARCH}-linux-gnu/zconf.h zlibincludes
         export CFLAGS="-Izlibincludes -I../zlibincludes"
         export LDFLAGS=/usr/lib/${ARCH}-linux-gnu/libz.a
         STATIC=1 ./configure --prefix=$BUILD/dropbear
-        make STATIC=1
-        make install STATIC=1
+        make PROGRAMS="dropbear dropbearkey dbclient scp" MULTI=1 STATIC=1 SCPPROGRESS=1
+        make PROGRAMS="dropbear dropbearkey dbclient scp" MULTI=1 STATIC=1 SCPPROGRESS=1 install
+        # make STATIC=1
+        # make install STATIC=1
     popd
 popd
 fi
@@ -62,10 +74,8 @@ fi
 
 if ! test -f $BUILD/epoxy-get ; then
 pushd $BUILD
-  test -d go || (
-      ( test -f go1.7.linux-amd64.tar.gz || \
-          wget https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz ) &&
-      tar -xvf go1.7.linux-amd64.tar.gz  )
+  arch=$( dpkg --print-architecture | sed -e 's/i//g' )
+  unpack go https://storage.googleapis.com/golang/go1.7.linux-${arch}.tar.gz
   export GOROOT=$BUILD/go
   export PATH=$PATH:$GOROOT/bin
 
@@ -91,10 +101,19 @@ echo "Setting up directory hierarchy"
 mkdir -p $INITRAM/{bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
 cp $BUILD/busybox/bin/busybox $INITRAM/bin
 cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
+cp $BUILD/dropbear/bin/scp $INITRAM/bin
 cp $BUILD/kexec/sbin/kexec $INITRAM/sbin
 cp $BUILD/epoxy-get $INITRAM/bin
 cp $BUILD/keys/* $INITRAM/etc/dropbear
 
+#test -f centos_initrd || \
+#    curl -o centos_initrd https://github.com/stephen-soltesz/pxe-test/raw/master/i386/initrd.img
+#test -f centos_vmlinuz || \
+#    curl -o centos_vmlinuz https://github.com/stephen-soltesz/pxe-test/raw/master/i386/vmlinuz
+#test -f centos_x86_64_initrd || \
+#    curl -o centos_x86_64_initrd https://github.com/stephen-soltesz/pxe-test/raw/master/x86_64/initrd.img
+#test -f centos_x86_64_vmlinuz || \
+#    curl -o centos_x86_64_vmlinuz https://github.com/stephen-soltesz/pxe-test/raw/master/x86_64/vmlinuz
 
 # Certificates
 cp -L -r /etc/ssl/certs $INITRAM/etc/ssl/
@@ -159,6 +178,8 @@ pushd $BUILD
   pushd ipxe/src
     make bin/ipxe.iso EMBED=$BASEDIR/embed.ipxe,$BUILD/vmlinuz,$BUILD/initramfs  # DEBUG=basemem,hidemem,memmap,settings
     cp bin/ipxe.iso $BASEDIR/
+    #make bin/ipxe.lkrn EMBED=$BASEDIR/embed.ipxe,$BUILD/centos_vmlinuz,$BUILD/centos_initramfs  # DEBUG=basemem,hidemem,memmap,settings
+    #cp bin/ipxe.lkrn $BASEDIR/ipxe_centos.lkrn
   popd
 popd
 
