@@ -67,6 +67,12 @@ mkdir -p /var/log
 syslogd
 echo 7 7 7 7 > /proc/sys/kernel/printk
 
+
+#epoxy-get -o initrd.img -url https://github.com/stephen-soltesz/pxe-test/raw/master/i386/initrd.img
+#epoxy-get -o vmlinuz -url https://github.com/stephen-soltesz/pxe-test/raw/master/i386/vmlinuz
+#epoxy-get -o initrd.img -url https://github.com/stephen-soltesz/pxe-test/raw/master/x86_64/initrd.img
+#epoxy-get -o vmlinuz -url https://github.com/stephen-soltesz/pxe-test/raw/master/x86_64/vmlinuz
+
 # echo "download get initrd.img"
 # /bin/gget -o /root/initrd -url https://raw.githubusercontent.com/stephen-soltesz/pxe-test/master/initrd.img
 
