@@ -3,6 +3,6 @@
 echo "OKAY"
 imgstat
 imgselect vmlinuz
-boot
+boot vmlinuz maxcpus=0
 
 shell
