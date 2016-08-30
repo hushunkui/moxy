@@ -100,8 +100,8 @@ rm -rf $INITRAM
 echo "Setting up directory hierarchy"
 mkdir -p $INITRAM/{bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
 cp $BUILD/busybox/bin/busybox $INITRAM/bin
-cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
-cp $BUILD/dropbear/bin/scp $INITRAM/bin
+#cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
+#cp $BUILD/dropbear/bin/scp $INITRAM/bin
 cp $BUILD/kexec/sbin/kexec $INITRAM/sbin
 cp $BUILD/epoxy-get $INITRAM/bin
 cp $BUILD/keys/* $INITRAM/etc/dropbear
@@ -126,12 +126,12 @@ chmod 700 $INITRAM/root/
 
 
 # Strace
-cp /usr/bin/strace $INITRAM/usr/bin/
+#cp /usr/bin/strace $INITRAM/usr/bin/
 cp /lib/${ARCH}-linux-gnu/libc.so.6 $INITRAM/lib/${ARCH}-linux-gnu
 test -f /lib/ld-linux.so.2 && cp /lib/ld-linux.so.2 $INITRAM/lib
 test -f /lib64/ld-linux-x86-64.so.2 && cp /lib64/ld-linux-x86-64.so.2 $INITRAM/lib
-cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
-cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
+#cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
+#cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
 cp /etc/nsswitch.conf $INITRAM/etc
 
 ln -s busybox $INITRAM/bin/sh
@@ -162,8 +162,8 @@ EOF
 cp /boot/vmlinuz-$( uname -r ) $BUILD/vmlinuz
 pushd $INITRAM 
   rm -f root/initramfs
-  cp $BUILD/vmlinuz root/vmlinuz
-  find . | cpio -H newc -o | gzip -c > root/initramfs
+#  cp $BUILD/vmlinuz root/vmlinuz
+#  find . | cpio -H newc -o | gzip -c > root/initramfs
   find . | cpio -H newc -o | gzip -c > $BUILD/initramfs
 popd
 
