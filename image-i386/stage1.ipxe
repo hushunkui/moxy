@@ -1,0 +1,28 @@
+#!ipxe
+
+echo "OKAY"
+
+set proto http
+set server someserver.com
+set path epoxy-test-1/mlx4
+
+# Setup network connectivity.
+ifopen net0
+set net0/ip 111.111.111.11
+set net0/gateway 111.111.111.1
+set net0/netmask 255.255.255.192
+set net0/dns 8.8.8.8
+set hostname mlab4.iad1t.measurement-lab.org
+
+# Download stage2 images.
+kernel --name vmlinuz ${proto}://${server}/${path}/vmlinuz
+initrd --name initrd ${proto}://${server}/${path}/initramfs
+
+imgstat
+imgselect vmlinuz
+
+# Start stage2.
+set network ip=${net0/ip}::${net0/gateway}:${net0/netmask}:${hostname}:eth0:off:${net0/dns}:8.8.4.4
+boot vmlinuz ip=${network}
+
+shell

@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# Generate a basic isolinux ISO boot image from vmlinuz & initramfs
+
+set -x
+set -e
+
+OUT=
+EXTRAARGS=
+
+function help() {
+	echo "usage: ${0} [OPTIONS] vmlinuz initramfs"
+	echo
+	echo "where OPTIONS are:"
+	echo " -h       show this help"
+	echo " -o FILE  save iso image to file"
+	echo " -x ARGS  extra kernel command line args"
+}
+
+FIRST=""
+
+while getopts "ho:x:" opt; do
+	case ${opt} in
+		h)
+			help
+			exit 0
+			;;
+		o)
+			OUT="${OPTARG}"
+			;;
+		x)
+			EXTRAARGS="${OPTARG}"
+			;;
+	esac
+done
+
+shift $((OPTIND - 1))
+
+if [ -z "${OUT}" ]; then
+	echo "${0}: no output file given" >&2
+	help
+	exit 1
+fi
+
+# There should either be mkisofs or the compatible genisoimage program
+mkisofs=/usr/bin/mkisofs  # genisoimage
+
+if [ ! -f "${mkisofs}" ]; then
+	echo "${0}: mkisofs or genisoimage not found, please install or set PATH" >&2
+	exit 1
+fi
+
+dir=$(mktemp -d /build/iso.dir.XXXXXX)
+cfg=${dir}/isolinux.cfg
+
+mkisofs+=(-quiet -l -volid "ePoxy" -preparer "ePoxy builder" -appid "ePoxy v0.1" -publisher "whatever" -c boot.cat)
+
+cp $1 ${dir}/vmlinuz
+cp $2 ${dir}/initrd
+
+# generate the config
+cat > ${cfg} <<EOF
+# These default options can be changed in the geniso script
+SAY ePoxy ISO boot image -- $OUT
+TIMEOUT 30
+DEFAULT linux
+
+LABEL linux
+ KERNEL vmlinuz 
+ INITRD initrd
+ APPEND vga=current $EXTRAARGS
+EOF
+
+cat ${cfg}
+
+
+ISOLINUX_BIN=/usr/lib/ISOLINUX/isolinux.bin
+LDLINUX_C32=/usr/lib/syslinux/modules/bios/ldlinux.c32
+
+# Copy isolinux bootloader
+cp ${ISOLINUX_BIN} ${dir}
+
+# syslinux 6.x needs a file called ldlinux.c32
+cp ${LDLINUX_C32} ${dir}
+
+# generate the iso image
+"${mkisofs[@]}" -b isolinux.bin -no-emul-boot -boot-load-size 4 -boot-info-table -output ${OUT} ${dir}
+
+# Use isohybrid if available
+if isohybrid --version >/dev/null 2>/dev/null; then
+	isohybrid ${OUT} >/dev/null
+fi
+
+# clean up temporary dir
+#rm -fr ${dir}

@@ -3,8 +3,9 @@
 set -x
 set -e
 
-BUILD=${1:-Specify build directory}
-SSHKEY=${2:-authorized keys file}
+BUILD=${1:? Specify build directory}
+SSHKEY=${2:? Authorized keys file}
+WITHMLX=${3:-0}
 BASEDIR=$PWD
 INITRAM=$BUILD/initramfs_base
 
@@ -22,8 +23,8 @@ function unpack () {
   if ! test -d $dir ; then
     if ! test -f $tgz ; then
       wget $url
-      tar -xvf $tgz
     fi
+    tar -xvf $tgz
   fi
 }
 
@@ -66,7 +67,7 @@ pushd $BUILD
         ./bootstrap
         LDFLAGS=-static ./configure --prefix $BUILD/kexec
         make
-        make install 
+        make install
     popd
 popd
 fi
@@ -79,7 +80,7 @@ pushd $BUILD
   export GOROOT=$BUILD/go
   export PATH=$PATH:$GOROOT/bin
 
-  CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go 
+  CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go
   strip $BUILD/epoxy-get
   upx --brute $BUILD/epoxy-get
 popd
@@ -95,13 +96,13 @@ if ! test -f $BUILD/keys/dropbear_ecdsa_host_key ; then
   $BUILD/dropbear/bin/dropbearkey -t ecdsa -f $BUILD/keys/dropbear_ecdsa_host_key
 fi
 
-rm -rf $INITRAM
 
 echo "Setting up directory hierarchy"
+rm -rf $INITRAM
 mkdir -p $INITRAM/{bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,proc,sys,dev/pts,root,newroot,usr/bin,usr/sbin}
 cp $BUILD/busybox/bin/busybox $INITRAM/bin
-#cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
-#cp $BUILD/dropbear/bin/scp $INITRAM/bin
+cp $BUILD/dropbear/sbin/dropbear $INITRAM/sbin
+cp $BUILD/dropbear/bin/scp $INITRAM/bin
 cp $BUILD/kexec/sbin/kexec $INITRAM/sbin
 cp $BUILD/epoxy-get $INITRAM/bin
 cp $BUILD/keys/* $INITRAM/etc/dropbear
@@ -126,12 +127,13 @@ chmod 700 $INITRAM/root/
 
 
 # Strace
-#cp /usr/bin/strace $INITRAM/usr/bin/
+cp /usr/bin/strace $INITRAM/usr/bin/
 cp /lib/${ARCH}-linux-gnu/libc.so.6 $INITRAM/lib/${ARCH}-linux-gnu
+cp /lib/${ARCH}-linux-gnu/libresolv.so.2 $INITRAM/lib/${ARCH}-linux-gnu
+cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
+cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
 test -f /lib/ld-linux.so.2 && cp /lib/ld-linux.so.2 $INITRAM/lib
 test -f /lib64/ld-linux-x86-64.so.2 && cp /lib64/ld-linux-x86-64.so.2 $INITRAM/lib
-#cp /lib/${ARCH}-linux-gnu/libnss* $INITRAM/lib/${ARCH}-linux-gnu
-#cp /lib/${ARCH}-linux-gnu/libnsl* $INITRAM/lib/${ARCH}-linux-gnu
 cp /etc/nsswitch.conf $INITRAM/etc
 
 ln -s busybox $INITRAM/bin/sh
@@ -142,45 +144,58 @@ chmod +x $INITRAM/init.sh
 ln -s init.sh $INITRAM/init
 
 MODBASE=lib/modules/${KERN}
-MODPATH=$MODBASE/kernel/drivers/net/ethernet/intel
-mkdir -p $INITRAM/$MODPATH/e1000
-mkdir -p $INITRAM/$MODPATH/e1000e
+MODPATH=$MODBASE/kernel/drivers/net/ethernet
 
-cp /$MODPATH/e1000/e1000.ko $INITRAM/$MODPATH/e1000
-cp /$MODPATH/e1000e/e1000e.ko $INITRAM/$MODPATH/e1000e
-cp /$MODBASE/modules.builtin $INITRAM/$MODBASE
-cp /$MODBASE/modules.order $INITRAM/$MODBASE
+if [ $WITHMLX -eq 1 ] ; then
+    ./setup_mlx.sh $BUILD $INITRAM
+else
+    echo "SKIPPING MLX"
+fi
 
-depmod -a -b $INITRAM/
+#mkdir -p $INITRAM/$MODPATH/intel/e1000
+#mkdir -p $INITRAM/$MODPATH/intel/e1000e
+#mkdir -p $INITRAM/$MODPATH/mellanox/mlx4
+
+#cp /$MODPATH/mellanox/mlx4/mlx4_core.ko $INITRAM/$MODPATH/mellanox/mlx4
+#cp /$MODPATH/mellanox/mlx4/mlx4_en.ko $INITRAM/$MODPATH/mellanox/mlx4
+
+#cp /$MODPATH/intel/e1000/e1000.ko $INITRAM/$MODPATH/intel/e1000
+#cp /$MODPATH/intel/e1000e/e1000e.ko $INITRAM/$MODPATH/intel/e1000e
+#cp /$MODBASE/modules.builtin $INITRAM/$MODBASE
+#cp /$MODBASE/modules.order $INITRAM/$MODBASE
+
+#depmod -a -b $INITRAM/
 
 cat <<EOF > $INITRAM/etc/resolv.conf
 nameserver 8.8.8.8
-nameserver 192.168.0.1
 EOF
 
 
-cp /boot/vmlinuz-$( uname -r ) $BUILD/vmlinuz
-pushd $INITRAM 
+#cp /boot/vmlinuz-$( uname -r ) $BUILD/vmlinuz
+chown -R root:root $INITRAM
+pushd $INITRAM
   rm -f root/initramfs
 #  cp $BUILD/vmlinuz root/vmlinuz
 #  find . | cpio -H newc -o | gzip -c > root/initramfs
   find . | cpio -H newc -o | gzip -c > $BUILD/initramfs
 popd
 
-chown -R root:root $INITRAM 
 
 pushd $BUILD
   test -d ipxe || git clone git://git.ipxe.org/ipxe.git
 popd
 
 
+if /bin/false ; then
 pushd $BUILD
   pushd ipxe/src
-    make bin/ipxe.iso EMBED=$BASEDIR/embed.ipxe,$BUILD/vmlinuz,$BUILD/initramfs  # DEBUG=basemem,hidemem,memmap,settings
+    # make bin/ipxe.iso EMBED=$BASEDIR/embed.ipxe,$BUILD/vmlinuz,$BUILD/initramfs  # DEBUG=basemem,hidemem,memmap,settings
+    make bin/ipxe.iso EMBED=$BASEDIR/embed.ipxe  # DEBUG=basemem,hidemem,memmap,settings
     cp bin/ipxe.iso $BASEDIR/
     #make bin/ipxe.lkrn EMBED=$BASEDIR/embed.ipxe,$BUILD/centos_vmlinuz,$BUILD/centos_initramfs  # DEBUG=basemem,hidemem,memmap,settings
     #cp bin/ipxe.lkrn $BASEDIR/ipxe_centos.lkrn
   popd
 popd
+fi
 
 fi

@@ -1,0 +1,16 @@
+#!ipxe
+
+echo "Starting stage2 script"
+set base_url ${proto}://${server}/${path}
+
+echo "  Downloading stage2 images from ${base_url}"
+kernel --name vmlinuz ${base_url}/vmlinuz-mlx
+initrd --name initrd ${base_url}/initramfs-mlx
+
+imgstat
+
+set network ${net0/ip}::${net0/gateway}:${net0/netmask}:${hostname}:eth0:off:${net0/dns}:8.8.4.4
+
+echo "  Booting stage2: vmlinuz ip=${network}"
+sleep 2
+boot vmlinuz ip=${network}
