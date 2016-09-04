@@ -1,8 +1,0 @@
-#!ipxe
-
-echo "OKAY"
-imgstat
-imgselect vmlinuz
-boot vmlinuz maxcpus=0
-
-shell
