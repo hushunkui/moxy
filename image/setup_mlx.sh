@@ -3,9 +3,11 @@
 set -x
 set -e
 
-BUILD=${1:-Specify build directory}
-BOOTSTRAP=${2:-Specify the initramfs base directory}
-SSHKEY=${3:? Authorized keys file}
+BUILD=${1:? Specify build directory}
+BOOTSTRAP=${2:? Specify the initramfs base directory}
+
+BASEDIR=$( dirname "${BASH_SOURCE[0]}" )
+BASEDIR=$( realpath $BASEDIR )
 
 KERN=$( uname --kernel-release )
 
@@ -21,17 +23,23 @@ function unpack () {
   fi
 }
 
-#debootstrap --arch amd64 xenial $BOOTSTRAP
+mkdir -p $BOOTSTRAP
+# Disable interactive prompt from some packages.
+export DEBIAN_FRONTEND=noninteractive
+debootstrap --arch amd64 xenial $BOOTSTRAP
+
 
 cat <<EOF > $BOOTSTRAP/etc/resolv.conf
 nameserver 8.8.8.8
 EOF
+
 
 cat <<EOF > $BOOTSTRAP/etc/fstab
 # UNCONFIGURED FSTAB FOR BASE SYSTEM
 proc           /proc        proc     nosuid,noexec,nodev 0     0
 sysfs          /sys         sysfs    nosuid,noexec,nodev 0     0
 EOF
+
 
 cat <<\EOF > $BOOTSTRAP/etc/rc.local
 #!/bin/sh
@@ -98,37 +106,30 @@ if ! test -d $BOOTSTRAP/root/mft-4.4.0-44 ; then
     fi
 fi
 
-# IN $BOOTSTRAP CHROOT
-mount -t proc proc $BOOTSTRAP/proc
-mount -t sysfs sysfs $BOOTSTRAP/sys
-chroot $BOOTSTRAP /bin/bash <<EOF
-    set -e
-    set -x
-    if ! test -f /usr/bin/flint ; then
-        # Extra packages needed for correct operation.
-        apt-get install -y usbutils pciutils perl-modules
+if ! test -f $BOOTSTRAP/usr/bin/flint ; then
+    mount -t proc proc $BOOTSTRAP/proc
+    mount -t sysfs sysfs $BOOTSTRAP/sys
 
-        # For building dkms packages.
-        apt-get install -y gcc make dkms linux-headers-generic linux-generic
+    # Extra packages needed for correct operation.
+    chroot $BOOTSTRAP apt-get install -y usbutils pciutils perl-modules
+    # For building dkms packages.
+    chroot $BOOTSTRAP apt-get install -y gcc make dkms linux-headers-generic linux-generic
 
-        pushd /root/mft-4.4.0-44
-            test -f /usr/bin/flint || ./install.sh
-        popd
+    #pushd /root/mft-4.4.0-44
+    #    test -f /usr/bin/flint || ./install.sh
+    #popd
+    chroot $BOOTSTRAP bash -c "cd /root/mft-4.4.0-44 && ./install.sh"
 
-        # Unnecessary commands.
-        apt-get autoremove -y linux-generic linux-headers-4.4.0-21 linux-headers-`uname -r`
-        apt-get clean
+    # Remove unnecessary packages and data.
+    chroot $BOOTSTRAP apt-get autoremove -y linux-generic linux-headers-4.4.0-21 linux-headers-`uname -r`
+    chroot $BOOTSTRAP apt-get remove -y linux-firmware
+    chroot $BOOTSTRAP apt-get clean -y
+    chroot $BOOTSTRAP rm -rf /root/mft-4.4.0-44
+    chroot $BOOTSTRAP rm -rf /boot/*
 
-        pushd /root
-            rm -rf mft-4.4.0-44
-        popd
-        rm -rf /boot/*
-	fi
-EOF
-# TODO: remove linux-firmware
-# TODO: remove /var/cache/*
-umount $BOOTSTRAP/proc
-umount $BOOTSTRAP/sys
+    umount $BOOTSTRAP/proc
+    umount $BOOTSTRAP/sys
+fi
 
 
 echo "Setting up directory hierarchy"
@@ -137,25 +138,26 @@ cp $BUILD/dropbear/sbin/dropbear $BOOTSTRAP/sbin
 cp $BUILD/dropbear/bin/scp $BOOTSTRAP/bin
 cp $BUILD/keys/* $BOOTSTRAP/etc/dropbear
 
+
 mkdir -p $BOOTSTRAP/root/.ssh
-cp $SSHKEY $BOOTSTRAP/root/.ssh/authorized_keys
+cp $BASEDIR/authorized_keys  $BOOTSTRAP/root/.ssh/authorized_keys
 chown root:root $BOOTSTRAP/root/.ssh/authorized_keys
 chmod 700 $BOOTSTRAP/root/
 
+
 if ! test -f $BOOTSTRAP/usr/local/util/zbin ; then
-  pushd $BUILD
-    pushd ipxe/src
-      # make bin/ipxe.iso EMBED=$BASEDIR/embed.ipxe,$BUILD/vmlinuz,$BUILD/initramfs  # DEBUG=basemem,hidemem,memmap,settings
-      make util/zbin
-      cp -ar util $BOOTSTRAP/usr/local/
-      cp /vagrant/updaterom.sh $BOOTSTRAP/usr/local/util
-      cp /vagrant/flashrom.sh $BOOTSTRAP/usr/local/util
+    pushd $BUILD
+        pushd ipxe/src
+          make util/zbin
+          cp -ar util $BOOTSTRAP/usr/local/
+          cp /vagrant/updaterom.sh $BOOTSTRAP/usr/local/util
+          cp /vagrant/flashrom.sh $BOOTSTRAP/usr/local/util
+        popd
     popd
-  popd
 fi
 
-# bundle everything
+
 # pushd /build/initramfs_base
 pushd $BOOTSTRAP
-  find . | cpio -H newc -o | gzip -c > $BUILD/initramfs-mlx
+    find . | cpio -H newc -o | gzip -c > $BUILD/initramfs-mlx
 popd
