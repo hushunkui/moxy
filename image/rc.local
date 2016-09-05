@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# Try to setup networking.
+echo "Configuring network..."
+ping -c 1 www.google.com || (
+    echo "KERNEL COMMAND LINE:"
+    cat /proc/cmdline
+    echo "^^^^^^^^^^^^^^^^^^^"
+    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep ip= | sed -e 's/ip=//g' )
+    if test -n "$IPCFG" ; then
+        echo "Using IP configuration: $IPCFG"
+        echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
+            ifconfig $DEV $IP netmask $NM
+            route add default gw $GW
+            hostname $HN
+        )
+    else
+        echo "Using default IP configuration."
+        ifconfig eth0 192.168.0.107 netmask 255.255.255.0
+        route add default gw 192.168.0.1
+    fi
+    ifconfig eth0
+)
+
+
+echo "Starting syslog..."
+syslogd
+
+
+echo "Starting dropbear..."
+# The "-g" option disables root login with password.
+dropbear -g
