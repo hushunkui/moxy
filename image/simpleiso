@@ -55,8 +55,12 @@ cfg=${dir}/isolinux.cfg
 
 mkisofs+=(-quiet -l -volid "ePoxy" -preparer "ePoxy builder" -appid "ePoxy v0.1" -publisher "whatever" -c boot.cat)
 
+INITRD=
 cp $1 ${dir}/vmlinuz
-cp $2 ${dir}/initrd
+if test -f "$2" ; then
+    cp $2 ${dir}/initrd
+    INITRD="INITRD initrd"
+fi
 
 # generate the config
 cat > ${cfg} <<EOF
@@ -67,8 +71,8 @@ DEFAULT linux
 
 LABEL linux
  KERNEL vmlinuz 
- INITRD initrd
- APPEND vga=current $EXTRAARGS
+ $INITRD
+ APPEND $EXTRAARGS
 EOF
 
 cat ${cfg}
@@ -88,8 +92,8 @@ cp ${LDLINUX_C32} ${dir}
 
 # Use isohybrid if available
 if isohybrid --version >/dev/null 2>/dev/null; then
-	isohybrid ${OUT} >/dev/null
+    isohybrid ${OUT} >/dev/null
 fi
 
 # clean up temporary dir
-#rm -fr ${dir}
+rm -fr ${dir}
