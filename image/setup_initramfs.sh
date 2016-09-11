@@ -3,11 +3,13 @@
 set -x
 set -e
 
-BUILD=${1:? Specify build directory}
-INITRAM=${2:? Base directory for generated initramfs}
+BASEDIR=$( realpath $( dirname "${BASH_SOURCE[0]}" ) )
 
-BASEDIR=$( dirname "${BASH_SOURCE[0]}" )
-BASEDIR=$( realpath $BASEDIR )
+BUILD=${1:? Specify build directory}
+CONFIG=${2:? Name of configuration}
+
+INITRAM=$BUILD/initramfs_$CONFIG
+CONFDIR=$BASEDIR/$CONFIG
 
 ARCH_ALT=$( dpkg --print-architecture | sed -e 's/i//g' )
 ARCH=$( arch | sed -e 's/i686/i386/' )
@@ -34,7 +36,7 @@ if ! test -f $BUILD/busybox/bin/busybox ; then
     pushd $BUILD
         unpack busybox-1.25.0 /moxy/vendor/busybox-1.25.0.tar.bz2
         pushd busybox-1.25.0
-            cp $BASEDIR/busybox_config ./.config
+            cp $CONFDIR/busybox_config ./.config
             make all
             make install
         popd
@@ -91,6 +93,24 @@ if ! test -f $BUILD/keys/dropbear_ecdsa_host_key ; then
 fi
 
 
+echo "Compressing binaries"
+mkdir -p $BUILD/upx_build
+for file in $BUILD/busybox/bin/busybox \
+            $BUILD/dropbear/bin/dropbearmulti \
+            $BUILD/epoxy-get \
+            $BUILD/kexec/sbin/kexec ; do
+    name=$(basename $file)
+    if ! test -f $BUILD/upx_build/$name ; then
+        upx --brute -o$BUILD/upx_build/$name $file
+    fi
+done
+
+#cp $BUILD/busybox/bin/busybox     $BUILD/upx_build
+#cp $BUILD/dropbear/bin/scp        $BUILD/upx_build
+#cp $BUILD/dropbear/sbin/dropbear  $BUILD/upx_build
+#cp $BUILD/epoxy-get               $BUILD/upx_build
+#cp $BUILD/kexec/sbin/kexec        $BUILD/upx_build
+
 echo "Setting up directory hierarchy"
 rm -rf $INITRAM
 mkdir -p $INITRAM
@@ -102,14 +122,13 @@ pushd $INITRAM
     mknod -m 622 dev/console c 5 1
     mknod -m 622 dev/tty0 c 4 0
 
-    cp $BUILD/busybox/bin/busybox     bin
-    cp $BUILD/dropbear/bin/scp        bin
-    cp $BUILD/dropbear/sbin/dropbear  sbin
-    cp $BUILD/epoxy-get               bin
-    cp $BUILD/kexec/sbin/kexec        sbin
+    cp $BUILD/upx_build/busybox       bin
+    cp $BUILD/upx_build/epoxy-get     bin
+    cp $BUILD/upx_build/dropbearmulti bin
+    cp $BUILD/upx_build/kexec         sbin
 
     # Debug binary.
-    cp /usr/bin/strace                usr/bin/
+    # cp /usr/bin/strace                usr/bin/
 
     # Server SSH Keys
     cp $BUILD/keys/*                  etc/dropbear
@@ -131,7 +150,10 @@ pushd $INITRAM
     cp /etc/nsswitch.conf                    etc
 
     # Make the first symlink from busybox to sh so /init can run.
-    ln -s busybox          bin/sh
+    ln -s /bin/busybox          bin/sh
+    ln -s /bin/dropbearmulti    bin/scp
+    ln -s /bin/dropbearmulti    sbin/dropbear
+
     touch etc/mdev.conf
 
     # Add the root user and group.
@@ -140,13 +162,10 @@ pushd $INITRAM
     echo 'export PATH=$PATH:/sbin:/usr/sbin' > root/.profile
     echo 'set -o vi' >> root/.profile
 
-    # Setup DNS configuration.
-    echo "nameserver 8.8.8.8" > etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> etc/resolv.conf
-
-    cp $BASEDIR/init       ./
-    cp $BASEDIR/inittab    etc
-    cp $BASEDIR/rc.local   etc
+    cp $CONFDIR/init        ./
+    cp $CONFDIR/inittab     etc
+    cp $CONFDIR/rc.local    etc
+    cp $CONFDIR/resolv.conf etc
 
     # Force ownership for all files in the initramfs.
     chown -R root:root ./
@@ -154,13 +173,5 @@ popd
 
 
 pushd $INITRAM
-    find . -type f -executable \
-        -a ! -name "*.so.*" \
-        -a ! -name "*.sh" \
-        -a ! -name "strace" \
-        -a ! -name "init" \
-        -a ! -name "rc.local" \
-        -print \
-        -a -exec upx -9 {} \;
-    find . | cpio -H newc -o | gzip -c > $BUILD/initramfs.gz
+    find . | cpio -H newc -o | gzip -c > ${INITRAM}.cpio.gz
 popd
