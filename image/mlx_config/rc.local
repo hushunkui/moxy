@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Enable the mellanox something tools.
+mst start
+
+# Try to setup networking.
+ping -c 1 www.google.com || (
+    echo "KERNEL COMMAND LINE:"
+    cat /proc/cmdline
+    echo "^^^^^^^^^^^^^^^^^^^"
+    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep ip= | sed -e 's/ip=//g' )
+    if test -n "$IPCFG" ; then
+        echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
+            ifconfig $DEV $IP netmask $NM
+            route add default gw $GW
+            hostname $HN
+        )
+    else
+        echo "Sorry -- no IP configuration. Trying to use default."
+        ifconfig eth0 192.168.0.107 netmask 255.255.255.0
+        route add default gw 192.168.0.1
+    fi
+)

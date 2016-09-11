@@ -1,0 +1,8 @@
+usbutils
+pciutils
+perl-modules
+gcc
+make
+dkms
+linux-headers-generic
+linux-generic
