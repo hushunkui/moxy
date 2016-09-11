@@ -3,11 +3,13 @@
 set -x
 set -e
 
-BUILD=${1:? Specify build directory}
-BOOTSTRAP=${2:? Specify the initramfs base directory}
+BASEDIR=$( realpath $( dirname "${BASH_SOURCE[0]}" ) )
 
-BASEDIR=$( dirname "${BASH_SOURCE[0]}" )
-BASEDIR=$( realpath $BASEDIR )
+BUILD=${1:? Specify build directory}
+CONFIG=${2:? Name of configuration}
+
+BOOTSTRAP=$BUILD/initramfs_$CONFIG
+CONFDIR=$BASEDIR/$CONFIG
 
 KERN=$( uname --kernel-release )
 
@@ -29,72 +31,10 @@ export DEBIAN_FRONTEND=noninteractive
 debootstrap --arch amd64 xenial $BOOTSTRAP
 
 
-cat <<EOF > $BOOTSTRAP/etc/resolv.conf
-nameserver 8.8.8.8
-EOF
-
-
-cat <<EOF > $BOOTSTRAP/etc/fstab
-# UNCONFIGURED FSTAB FOR BASE SYSTEM
-proc           /proc        proc     nosuid,noexec,nodev 0     0
-sysfs          /sys         sysfs    nosuid,noexec,nodev 0     0
-EOF
-
-
-cat <<\EOF > $BOOTSTRAP/etc/rc.local
-#!/bin/sh
-
-# Enable the mellanox something tools.
-mst start
-
-# Try to setup networking.
-ping -c 1 www.google.com || (
-    echo "KERNEL COMMAND LINE:"
-    cat /proc/cmdline
-    echo "^^^^^^^^^^^^^^^^^^^"
-    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep ip= | sed -e 's/ip=//g' )
-    if test -n "$IPCFG" ; then
-        echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
-            ifconfig $DEV $IP netmask $NM
-            route add default gw $GW
-            hostname $HN
-        )
-    else
-        echo "Sorry -- no IP configuration. Trying to use default."
-        ifconfig eth0 192.168.0.107 netmask 255.255.255.0
-        route add default gw 192.168.0.1
-    fi
-)
-EOF
-chmod 755 $BOOTSTRAP/etc/rc.local
-
-
-cat <<\EOF > $BOOTSTRAP/init
-#!/bin/bash
-
-/bin/mount -t proc proc /proc
-/bin/mount -t sysfs sysfs /sys
-/bin/mount -t devpts /dev/pts /dev/pts
-
-/sbin/modprobe e1000
-/sbin/modprobe mlx4_en
-
-/etc/rc.local
-
-/sbin/dropbear
-mkdir -p /var/log
-/usr/sbin/rsyslogd
-
-echo "Dropping to a shell with job control. -- 3"
-/usr/bin/setsid /bin/bash -c 'exec /bin/bash </dev/tty1 >/dev/tty1 2>&1'
-
-echo "Sleeping for 6000"
-sleep 6000
-
-echo "Shell without job control."
-exec /bin/bash
-EOF
-chmod 755 $BOOTSTRAP/init
+cp $CONFDIR/resolv.conf $BOOTSTRAP/etc/resolv.conf
+cp $CONFDIR/fstab       $BOOTSTRAP/etc/fstab
+cp $CONFDIR/rc.local    $BOOTSTRAP/etc/rc.local
+cp $CONFDIR/init        $BOOTSTRAP/init
 
 
 if ! test -d $BOOTSTRAP/root/mft-4.4.0-44 ; then
@@ -110,14 +50,12 @@ if ! test -f $BOOTSTRAP/usr/bin/flint ; then
     mount -t proc proc $BOOTSTRAP/proc
     mount -t sysfs sysfs $BOOTSTRAP/sys
 
-    # Extra packages needed for correct operation.
-    chroot $BOOTSTRAP apt-get install -y usbutils pciutils perl-modules
-    # For building dkms packages.
-    chroot $BOOTSTRAP apt-get install -y gcc make dkms linux-headers-generic linux-generic
+    PACKAGES=$( cat mlx_config/extra.packages )
 
-    #pushd /root/mft-4.4.0-44
-    #    test -f /usr/bin/flint || ./install.sh
-    #popd
+    # Extra packages needed for correct operation.
+    chroot $BOOTSTRAP apt-get install -y $PACKAGES
+
+    # Run the mlx firmware tools installation script.
     chroot $BOOTSTRAP bash -c "cd /root/mft-4.4.0-44 && ./install.sh"
 
     # Remove unnecessary packages and data.
@@ -157,7 +95,6 @@ if ! test -f $BOOTSTRAP/usr/local/util/zbin ; then
 fi
 
 
-# pushd /build/initramfs_base
 pushd $BOOTSTRAP
-    find . | cpio -H newc -o | gzip -c > $BUILD/initramfs-mlx
+    find . | cpio -H newc -o | gzip -c > ${BOOTSTRAP}.cpio.gz
 popd
