@@ -3,13 +3,17 @@
 set -x
 set -e
 
-KERNEL=${1:? Specify output filename for kernel}
+BASEDIR=$( realpath $( dirname "${BASH_SOURCE[0]}" ) )
 
-BASEDIR=$( dirname "${BASH_SOURCE[0]}" )
-BASEDIR=$( realpath $BASEDIR )
+BUILD=${1:? Specify build directory}
+CONFIG=${2:? Name of configuration}
 
+KERNEL=$BUILD/vmlinuz_$CONFIG
+INITRAM=$BUILD/initramfs_$CONFIG
+CONFDIR=$BASEDIR/$CONFIG
 
 VER=$( uname -r | tr '-' ' ' | awk '{print $1}' )
+
 
 if ! test -f /usr/src/linux-source-${VER}/Makefile ; then
     pushd /usr/src
@@ -18,14 +22,20 @@ if ! test -f /usr/src/linux-source-${VER}/Makefile ; then
 fi
 
 pushd /usr/src/linux-source-${VER}
-    rm -f arch/x86/boot/bzImage
-    rm -f usr/initramfs_data.cpio.gz
 
-    if ! diff $BASEDIR/linux_config_minimal .config ; then
-        cp $BASEDIR/linux_config_minimal .config
+    if test ${INITRAM}.cpio.gz -nt $KERNEL ; then
+        rm -f arch/x86/boot/bzImage
+        rm -f usr/initramfs_data.cpio.gz
+
+        if ! diff <( sed -e "s|INITRAMFS_SOURCE_DIR|$INITRAM|g" \
+             $CONFDIR/linux_config_minimal ) .config ; then
+            sed -e "s|INITRAMFS_SOURCE_DIR|$INITRAM|g" \
+                $CONFDIR/linux_config_minimal > .config
+        fi
+
+        make -j3 bzImage
+        cp arch/x86/boot/bzImage $KERNEL
     fi
-    make -j3 bzImage
-    cp arch/x86/boot/bzImage $KERNEL
 popd
 
 # $BASEDIR/simpleiso -o $BASEDIR/build/stage2.iso $KERNEL
