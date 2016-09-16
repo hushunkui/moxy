@@ -30,3 +30,12 @@ syslogd
 echo "Starting dropbear..."
 # The "-g" option disables root login with password.
 dropbear -g
+
+
+# Run epoxy-get using arg from cmdline.
+nextboot=$(cat /proc/cmdline)
+nextboot="${nextboot##*epoxy.nextboot=}"
+nextboot="${nextboot%% *}"
+if test -n "$nextboot" ; then
+    echo epoxy-get -url $nextboot
+fi
