@@ -25,15 +25,20 @@ function unpack () {
   fi
 }
 
-mkdir -p $BOOTSTRAP
-# Disable interactive prompt from some packages.
-#export DEBIAN_FRONTEND=noninteractive
-#debootstrap --arch amd64 xenial $BOOTSTRAP || echo "$? -- failed?"
+
+if ! test -f $BOOTSTRAP/build.date ; then
+    mkdir -p $BOOTSTRAP
+    rm -rf $BOOTSTRAP/dev
+    # Disable interactive prompt from grub-pc or other packages.
+    export DEBIAN_FRONTEND=noninteractive
+    debootstrap --arch amd64 xenial $BOOTSTRAP
+fi
 
 
 cp $CONFDIR/resolv.conf $BOOTSTRAP/etc/resolv.conf
 cp $CONFDIR/fstab       $BOOTSTRAP/etc/fstab
 cp $CONFDIR/rc.local    $BOOTSTRAP/etc/rc.local
+ln --force --symbolic sbin/init $BOOTSTRAP/init
 # cp $CONFDIR/init        $BOOTSTRAP/init
 
 
@@ -64,10 +69,19 @@ if ! test -f $BOOTSTRAP/usr/bin/flint ; then
     chroot $BOOTSTRAP apt-get clean -y
     chroot $BOOTSTRAP rm -rf /root/mft-4.4.0-44
     chroot $BOOTSTRAP rm -rf /boot/*
+    chroot $BOOTSTRAP rm -rf /var/cache/*
+    # TODO: add root password
+    # TODO: add network configuration.
+    # TODO: enable rc.local
+    # TODO: enable sshd?
+    # systemctl enable rc.local.service
 
     umount $BOOTSTRAP/proc
     umount $BOOTSTRAP/sys
 fi
+
+# Set a default root passwd.
+chroot $BOOTSTRAP bash -c 'echo -e "demo\ndemo\n" | passwd'
 
 
 echo "Setting up directory hierarchy"
@@ -97,6 +111,7 @@ fi
 
 
 pushd $BOOTSTRAP
+    date --iso-8601=seconds --utc > build.date
     find . | cpio -H newc -o | gzip -c > ${BOOTSTRAP}.cpio.gz
 popd
 cp /boot/vmlinuz-$( uname -r ) ${BUILD}/vmlinuz_${CONFIG}
