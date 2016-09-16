@@ -78,11 +78,12 @@ func Download(client *http.Client, url, output string) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("Downloading: %s\n", output)
 	l, err := io.Copy(f, resp.Body)
 	if l != resp.ContentLength {
 		return fmt.Errorf("Expected ContentLength(%d) actually read(%d)", resp.ContentLength, l)
 	}
-	fmt.Printf("Wrote: %d\n", l)
+	log.Printf("Wrote: %d bytes\n", l)
 	return nil
 }
 
@@ -107,44 +108,53 @@ func main() {
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
 
-	t := tmp("nextboot")
-	fmt.Printf("%s -> %s\n", *url, t.Name())
-	err := Download(client, *url, t.Name())
+	// Download and parse the nextboot configuration.
+	nextboot := tmp("nextboot")
+	log.Printf("%s -> %s\n", *url, nextboot.Name())
+	err := Download(client, *url, nextboot.Name())
 	if err != nil {
 		log.Fatal(err)
 	}
-	n, err := Load(*output)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// defer os.Remove(nextboot.Name())
 
+        // Load the configuration.
+	n, err := Load(nextboot.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%s\n", n.String())
+
+	// Download the vmlinuz and initramfs images.
+	vmlinuz := tmp("vmlinuz")
+	err = Download(client, n.Kernel.Vmlinuz, vmlinuz.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	// defer os.Remove(vmlinuz.Name())
+
+	initramfs := tmp("initramfs")
+	err = Download(client, n.Kernel.Initramfs, initramfs.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	// defer os.Remove(initramfs.Name())
+
+	// Save local temporary file names for evaluating command template.
 	k := KernelSource{
+	        Vmlinuz: vmlinuz.Name(),
+	        Initramfs: initramfs.Name(),
 		Kargs: n.Kernel.Kargs,
 	}
-	t = tmp("vmlinuz")
-	k.Vmlinuz = t.Name()
-	err = Download(client, n.Kernel.Vmlinuz, t.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	t = tmp("initramfs")
-	k.Initramfs = t.Name()
-	// TODO(change variable):
-	err = Download(client, n.Kernel.Vmlinuz, t.Name())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var b bytes.Buffer
-	fmt.Printf("%s\n", n.String())
+        // Parse command as a template.
 	tmpl, err := template.New("name").Parse(n.Command)
 	if err != nil {
 		log.Fatal(err)
 	}
+	var b bytes.Buffer
 	err = tmpl.Execute(&b, k)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("b: %s\n", string(b.Bytes()))
+	log.Printf("b: %s\n", string(b.Bytes()))
 }
