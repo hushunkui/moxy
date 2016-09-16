@@ -63,7 +63,7 @@ fi
 if ! test -f $BUILD/kexec/sbin/kexec ; then
     pushd $BUILD
         unpack kexec-tools-2.0.13 /moxy/vendor/kexec-tools-2.0.13.tar.xz
-        pushd kexec-tools
+        pushd kexec-tools-2.0.13
             # ./bootstrap
             LDFLAGS=-static ./configure --prefix $BUILD/kexec
             make
@@ -115,7 +115,7 @@ echo "Setting up directory hierarchy"
 rm -rf $INITRAM
 mkdir -p $INITRAM
 pushd $INITRAM
-    mkdir -p {bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,lib64}
+    mkdir -p {tmp,bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,lib64}
     mkdir -p {proc,sys,var/log,dev/pts,root/.ssh,newroot,usr/bin,usr/sbin}
     chmod 700 root
 
