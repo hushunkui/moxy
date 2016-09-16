@@ -27,14 +27,14 @@ function unpack () {
 
 mkdir -p $BOOTSTRAP
 # Disable interactive prompt from some packages.
-export DEBIAN_FRONTEND=noninteractive
-debootstrap --arch amd64 xenial $BOOTSTRAP
+#export DEBIAN_FRONTEND=noninteractive
+#debootstrap --arch amd64 xenial $BOOTSTRAP || echo "$? -- failed?"
 
 
 cp $CONFDIR/resolv.conf $BOOTSTRAP/etc/resolv.conf
 cp $CONFDIR/fstab       $BOOTSTRAP/etc/fstab
 cp $CONFDIR/rc.local    $BOOTSTRAP/etc/rc.local
-cp $CONFDIR/init        $BOOTSTRAP/init
+# cp $CONFDIR/init        $BOOTSTRAP/init
 
 
 if ! test -d $BOOTSTRAP/root/mft-4.4.0-44 ; then
@@ -85,6 +85,7 @@ chmod 700 $BOOTSTRAP/root/
 
 if ! test -f $BOOTSTRAP/usr/local/util/zbin ; then
     pushd $BUILD
+        test -d ipxe || git clone git://git.ipxe.org/ipxe.git
         pushd ipxe/src
           make util/zbin
           cp -ar util $BOOTSTRAP/usr/local/
@@ -98,3 +99,4 @@ fi
 pushd $BOOTSTRAP
     find . | cpio -H newc -o | gzip -c > ${BOOTSTRAP}.cpio.gz
 popd
+cp /boot/vmlinuz-$( uname -r ) ${BUILD}/vmlinuz_${CONFIG}
