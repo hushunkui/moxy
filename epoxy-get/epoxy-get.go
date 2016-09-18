@@ -20,6 +20,12 @@ var (
 	output = flag.String("o", "", "The output file name.")
 )
 
+type Nextstage struct {
+	Vmlinuz   string // Source file.
+	Initramfs string // NextbootEnabled indicates whether ePoxy returns the NextbootScriptName or DefaultScriptName.
+	Kargs     string
+}
+
 type KernelSource struct {
 	Vmlinuz   string // Source file.
 	Initramfs string // NextbootEnabled indicates whether ePoxy returns the NextbootScriptName or DefaultScriptName.
