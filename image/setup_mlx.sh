@@ -31,7 +31,7 @@ if ! test -f $BOOTSTRAP/build.date ; then
     rm -rf $BOOTSTRAP/dev
     # Disable interactive prompt from grub-pc or other packages.
     export DEBIAN_FRONTEND=noninteractive
-    debootstrap --arch amd64 xenial $BOOTSTRAP
+    debootstrap --arch amd64 xenial $BOOTSTRAP && date --iso-8601=seconds --utc > build.date
 fi
 
 
@@ -50,6 +50,7 @@ if ! test -d $BOOTSTRAP/root/mft-4.4.0-44 ; then
         popd
     fi
 fi
+
 
 if ! test -f $BOOTSTRAP/usr/bin/flint ; then
     mount -t proc proc $BOOTSTRAP/proc
@@ -111,7 +112,6 @@ fi
 
 
 pushd $BOOTSTRAP
-    date --iso-8601=seconds --utc > build.date
     find . | cpio -H newc -o | gzip -c > ${BOOTSTRAP}.cpio.gz
 popd
 cp /boot/vmlinuz-$( uname -r ) ${BUILD}/vmlinuz_${CONFIG}
