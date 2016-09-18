@@ -1,5 +1,6 @@
 #!/bin/sh
 
+
 # Enable the mellanox something tools.
 mst start
 
@@ -8,7 +9,7 @@ ping -c 1 www.google.com || (
     echo "KERNEL COMMAND LINE:"
     cat /proc/cmdline
     echo "^^^^^^^^^^^^^^^^^^^"
-    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep ip= | sed -e 's/ip=//g' )
+    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep epoxy.ip= | sed -e 's/epoxy.ip=//g' )
     if test -n "$IPCFG" ; then
         echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
             ifconfig $DEV $IP netmask $NM
@@ -21,3 +22,7 @@ ping -c 1 www.google.com || (
         route add default gw 192.168.0.1
     fi
 )
+
+# Start ssh server after network is up.
+/sbin/dropbear
+# ip=192.168.0.112::192.168.0.1:255.255.255.0:mlab.local:eth0:false:8.8.8.8:8.8.4.4
