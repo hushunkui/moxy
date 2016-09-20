@@ -62,12 +62,15 @@ fi
 enter_with_proc $BOOTSTRAP
     # Extra packages needed for correct operation.
     PACKAGES=$( cat mlx_config/extra.packages )
-    # chroot $BOOTSTRAP apt-get install -y $PACKAGES
+    chroot $BOOTSTRAP apt-get install -y $PACKAGES
 exit_with_proc $BOOTSTRAP
 
 
 if ! test -f $BOOTSTRAP/usr/bin/flint ; then
 enter_with_proc $BOOTSTRAP
+
+    PACKAGES=$( cat mlx_config/build.packages )
+    chroot $BOOTSTRAP apt-get install -y $PACKAGES
 
     # Run the mlx firmware tools installation script.
     chroot $BOOTSTRAP bash -c "cd /root/mft-4.4.0-44 && ./install.sh"
@@ -75,11 +78,14 @@ enter_with_proc $BOOTSTRAP
     # Remove source directory since the unnecessary binary packages are large.
     chroot $BOOTSTRAP rm -rf /root/mft-4.4.0-44
 
+	# Remove packages needed for building.
+    chroot $BOOTSTRAP apt-get autoremove -y $PACKAGES linux-headers-${KERNVER} linux-headers-${KERN}
+
 exit_with_proc $BOOTSTRAP
 fi
 
 
-# Kernel panics unless /init is defined. Use to systemd for init.
+# Kernel panics unless /init is defined. Use systemd for init.
 ln --force --symbolic sbin/init $BOOTSTRAP/init
 
 
@@ -106,7 +112,7 @@ exit_with_proc $BOOTSTRAP
 echo "Removing unnecessary packages and files from $BOOTSTRAP"
 enter_with_proc $BOOTSTRAP
 
-    chroot $BOOTSTRAP apt-get autoremove -y linux-generic linux-headers-${KERNVER} linux-headers-${KERN}
+    # Remove grub packages, since these are unnecessary.
     chroot $BOOTSTRAP apt-get autoremove -y grub-pc grub-common grub2-common grub-gfxpayload-lists grub-pc-bin
     chroot $BOOTSTRAP apt-get remove -y linux-firmware
     chroot $BOOTSTRAP apt-get clean -y
