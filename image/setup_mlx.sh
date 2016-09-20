@@ -59,13 +59,15 @@ if ! test -d $BOOTSTRAP/root/mft-4.4.0-44 ; then
     fi
 fi
 
+enter_with_proc $BOOTSTRAP
+    # Extra packages needed for correct operation.
+    PACKAGES=$( cat mlx_config/extra.packages )
+    # chroot $BOOTSTRAP apt-get install -y $PACKAGES
+exit_with_proc $BOOTSTRAP
+
 
 if ! test -f $BOOTSTRAP/usr/bin/flint ; then
 enter_with_proc $BOOTSTRAP
-
-    # Extra packages needed for correct operation.
-    PACKAGES=$( cat mlx_config/extra.packages )
-    chroot $BOOTSTRAP apt-get install -y $PACKAGES
 
     # Run the mlx firmware tools installation script.
     chroot $BOOTSTRAP bash -c "cd /root/mft-4.4.0-44 && ./install.sh"
