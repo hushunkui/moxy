@@ -9,7 +9,8 @@ ping -c 1 www.google.com || (
     echo "KERNEL COMMAND LINE:"
     cat /proc/cmdline
     echo "^^^^^^^^^^^^^^^^^^^"
-    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep epoxy.ip= | sed -e 's/epoxy.ip=//g' )
+    ifconfig -a
+    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep -E 'ip=|epoxy.ip=' | sed -e 's/epoxy.ip=//g' | sed -e 's/ip=//g' )
     if test -n "$IPCFG" ; then
         echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
             ifconfig $DEV $IP netmask $NM
