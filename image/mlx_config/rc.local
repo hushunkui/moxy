@@ -9,6 +9,10 @@ ping -c 1 www.google.com || (
     echo "KERNEL COMMAND LINE:"
     cat /proc/cmdline
     echo "^^^^^^^^^^^^^^^^^^^"
+    until ifconfig eth0 ; do
+        echo "Waiting for eth0 to initialize."
+        sleep 1
+    done
     ifconfig -a
     IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep -E 'ip=|epoxy.ip=' | sed -e 's/epoxy.ip=//g' | sed -e 's/ip=//g' )
     if test -n "$IPCFG" ; then
