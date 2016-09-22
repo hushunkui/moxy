@@ -135,6 +135,8 @@ pushd $INITRAM
 
     # Certificates
     cp -L -r /etc/ssl/certs           etc/ssl
+    certhash=$( openssl x509 -noout -hash -in $CONFDIR/epoxy-ca.pem )
+    cp $CONFDIR/epoxy-ca.pem          etc/ssl/certs/${certhash}.0
 
     # SSH authorized keys.
     cp $BASEDIR/authorized_keys       root/.ssh/authorized_keys
