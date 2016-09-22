@@ -134,11 +134,16 @@ func loadKexec(client *http.Client, kexec *KexecSource) error {
 	return nil
 }
 
-func loadNextboot(chain *ChainSource) error {
-	return nil
-}
 
-func loadFallback(f *FallbackSource) error {
+func loadFallback(client *http.Client, f *FallbackSource) error {
+    fallback := tmp("fallback")
+    err = Download(client, f.Fallback, fallback.Name())
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	// cmd := fmt.Sprintf("tar xvf %s", fallback.Name())
+	// c := exec.Command("/bin/sh", "-c", "fallback/fallback")
 	return nil
 }
 
@@ -155,6 +160,35 @@ func parseCommand(kexec KexecSource, cmd string) string {
         log.Fatal(err)
     }
 	return string(b.Bytes())
+}
+
+func processURI(client *http.Client, uri string) error {
+    // Get and parse the nextboot configuration.
+    nextboot := tmp("nextboot")
+    log.Printf("Downloading %s -> %s\n", uri, nextboot.Name())
+    err := Download(client, uri, nextboot.Name())
+    if err != nil {
+        log.Fatal(err)
+    }
+    // defer os.Remove(nextboot.Name())
+
+    // Load the configuration.
+    n, err := Load(nextboot.Name())
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("%s\n", n.String())
+
+    if n.Kexec != nil {
+		err = loadKexec(client, n.Kexec)
+    } else if n.Chain != nil {
+	    err = processURI(client, n.Chain.Nextboot)
+    } else if n.Fallback != nil {
+		err = loadFallback(client, n.Fallback)
+    } else {
+		err = nil
+    }
+	return err
 }
 
 func main() {
@@ -178,30 +212,34 @@ func main() {
     transport := &http.Transport{TLSClientConfig: tlsConfig}
     client := &http.Client{Transport: transport}
 
+	err := processURI(client, *url)
+	if err != nil {
+		log.Fatal(err)
+	}
     // Download and parse the nextboot configuration.
-    nextboot := tmp("nextboot")
-    log.Printf("%s -> %s\n", *url, nextboot.Name())
-    err := Download(client, *url, nextboot.Name())
-    if err != nil {
-        log.Fatal(err)
-    }
+    // nextboot := tmp("nextboot")
+    // log.Printf("%s -> %s\n", *url, nextboot.Name())
+    // err := Download(client, *url, nextboot.Name())
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
     // defer os.Remove(nextboot.Name())
 
     // Load the configuration.
-    n, err := Load(nextboot.Name())
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("%s\n", n.String())
+    // n, err := Load(nextboot.Name())
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+    // log.Printf("%s\n", n.String())
 
-    if n.Kexec != nil {
-		err = loadKexec(client, n.Kexec)
-    } else if n.Chain != nil {
-		err = loadNextboot(n.Chain)
-    } else if n.Fallback != nil {
-		err = loadFallback(n.Fallback)
-    } else {
-		err = nil
-    }
-	os.Exit(1)
+    // if n.Kexec != nil {
+	// 	err = loadKexec(client, n.Kexec)
+    // } else if n.Chain != nil {
+	// 	err = processURI(client, n.Chain.Nextboot)
+    // } else if n.Fallback != nil {
+	// 	err = loadFallback(n.Fallback)
+    // } else {
+	// 	err = nil
+    // }
+	// os.Exit(1)
 }
