@@ -66,7 +66,7 @@ enter_with_proc $BOOTSTRAP
 exit_with_proc $BOOTSTRAP
 
 
-if ! test -f $BOOTSTRAP/usr/bin/flint ; then
+if ! test -f $BOOTSTRAP/lib/modules/${KERN}/updates/dkms/mst_pci.ko ; then
 enter_with_proc $BOOTSTRAP
 
     PACKAGES=$( cat mlx_config/build.packages )
@@ -78,8 +78,11 @@ enter_with_proc $BOOTSTRAP
     # Remove source directory since the unnecessary binary packages are large.
     chroot $BOOTSTRAP rm -rf /root/mft-4.4.0-44
 
-	# Remove packages needed for building.
-    chroot $BOOTSTRAP apt-get autoremove -y $PACKAGES linux-headers-${KERNVER} linux-headers-${KERN}
+    # Remove packages needed for building.
+    # NOTE: DO NOT "autoremove" gcc or make, as this uninstalls dkms and the
+    # mft module built above.
+    chroot $BOOTSTRAP apt-get autoremove -y linux-headers-generic linux-generic \
+        linux-headers-${KERNVER} linux-headers-${KERN}
 
 exit_with_proc $BOOTSTRAP
 fi
@@ -88,11 +91,16 @@ fi
 # Kernel panics unless /init is defined. Use systemd for init.
 ln --force --symbolic sbin/init $BOOTSTRAP/init
 
+# Copy ePoxy certificates into BOOTSTRAP fs.
+certhash=$( openssl x509 -noout -hash -in $CONFDIR/epoxy-ca.pem )
+cp $CONFDIR/epoxy-ca.pem        $BOOTSTRAP/etc/ssl/certs/${certhash}.0
 
 # Enable static resolv.conf
 # TODO: use systemd for network configuration entirely.
 rm -f $BOOTSTRAP/etc/resolv.conf
 cp $CONFDIR/resolv.conf $BOOTSTRAP/etc/resolv.conf
+# If permissions are incorrect, apt-get will fail to read contents.
+chmod 644 $BOOTSTRAP/etc/resolv.conf
 
 # TODO: enable sshd?
 cp $CONFDIR/fstab       $BOOTSTRAP/etc/fstab
@@ -136,14 +144,14 @@ chown root:root $BOOTSTRAP/root/.ssh/authorized_keys
 chmod 700 $BOOTSTRAP/root/
 
 
-if ! test -f $BOOTSTRAP/usr/local/util/zbin ; then
+if ! test -f $BOOTSTRAP/usr/local/util/updaterom.sh ; then
     pushd $BUILD
         test -d ipxe || git clone git://git.ipxe.org/ipxe.git
         pushd ipxe/src
           make util/zbin
           cp -ar util $BOOTSTRAP/usr/local/
-          cp /vagrant/updaterom.sh $BOOTSTRAP/usr/local/util
-          cp /vagrant/flashrom.sh $BOOTSTRAP/usr/local/util
+          cp $CONFDIR/flashrom.sh $BOOTSTRAP/usr/local/util
+          cp $CONFDIR/updaterom.sh $BOOTSTRAP/usr/local/util
         popd
     popd
 fi
