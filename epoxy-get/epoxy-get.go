@@ -18,6 +18,9 @@ import (
 
 var (
 	url    = flag.String("url", "https://127.0.0.1:8081/", "The https url to get.")
+	nextboot = flag.Bool("nextboot", false, "Launch the epoxy.nextboot= parameter from /proc/cmdline.")
+	// ack = flag.Bool("ack", false, "Confirm the epoxy.confirm= parameter from /proc/cmdline.")
+	// confirm, accept, acknowledge, complete, finish, sync
 )
 
 //////////////////////////
