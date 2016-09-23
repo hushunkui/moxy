@@ -13,8 +13,6 @@ if test -n "$ROMURL" ; then
         echo "Error: failed to download epoxy.mrom from $ROMURL"
         exit 1
     fi
-    echo "ROM VERSION:"
-    flint --image epoxy.mrom qrom
 
     echo "UPDATING ROM"
     /usr/local/util/flashrom.sh epoxy.mrom
