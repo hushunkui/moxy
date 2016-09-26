@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -21,8 +22,8 @@ var (
 	nextboot = flag.Bool("nextboot", false, "Launch the epoxy.nextboot= parameter from /proc/cmdline.")
 	// ack = flag.Bool("ack", false, "Confirm the epoxy.confirm= parameter from /proc/cmdline.")
 	// confirm, accept, acknowledge, complete, finish, sync, disable, enable
-	// EnableNextstage
-	// CompleteStage
+	// EnableNextstage -- affords connotations of "no-error-observed".
+	// CompleteStage -- evokes a sense of "false-positive".
 )
 
 //////////////////////////
@@ -62,6 +63,25 @@ func (n *Nextboot) String() string {
 	// AddHostInformation checks that strings are valid utf8.
 	b, _ := json.MarshalIndent(n, "", "    ")
 	return string(b)
+}
+
+func GetCmdLineFields(prefix string) (map[string]string) {
+	v := map[string]string {}
+	data, err := ioutil.ReadFile("/proc/cmdline")
+	if err != nil {
+	    log.Printf("Failed to open /proc/cmdline: %s\n", err)
+		return v
+	}
+	fields := strings.Fields(string(data))
+	for _, f := range fields {
+		kv := strings.Split(f, "=")
+		if strings.HasPrefix(kv[0], prefix) {
+		    fmt.Printf("FIELD: %#v\n", f)
+		    fmt.Printf("KV: %s == %s\n", kv[0], kv[1])
+		    v[kv[0]] = kv[1]
+		}
+	}
+	return v
 }
 
 func tmp(name string) *os.File {
@@ -232,6 +252,11 @@ func main() {
 	// if err != nil {
 	//     log.Fatal(err)
 	// }
+	v := GetCmdLineFields("epoxy.")
+	for k, v := range v {
+	    fmt.Printf("%s -- %s\n", k, v)
+	}
+	os.Exit(0)
 
 	// Setup HTTPS client.
 	tlsConfig := &tls.Config{
