@@ -128,7 +128,7 @@ pushd $INITRAM
     cp $BUILD/upx_build/kexec         sbin
 
     # Debug binary.
-    # cp /usr/bin/strace                usr/bin/
+    cp /usr/bin/strace                usr/bin/
 
     # Server SSH Keys
     cp $BUILD/keys/*                  etc/dropbear
@@ -137,6 +137,7 @@ pushd $INITRAM
     cp -L -r /etc/ssl/certs           etc/ssl
     certhash=$( openssl x509 -noout -hash -in $CONFDIR/epoxy-ca.pem )
     cp $CONFDIR/epoxy-ca.pem          etc/ssl/certs/${certhash}.0
+    cat etc/ssl/certs/*.pem etc/ssl/certs/*.0 > etc/ssl/certs/ca-certificates.crt
 
     # SSH authorized keys.
     cp $BASEDIR/authorized_keys       root/.ssh/authorized_keys
