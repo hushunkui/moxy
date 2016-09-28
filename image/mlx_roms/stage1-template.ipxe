@@ -1,7 +1,7 @@
 #!ipxe
 
 # Global settings.
-set epoxyaddress {{.ServerAddress}}
+set epoxyaddress epoxy-test-1.measurementlab.net:443
 
 set menu_timeout_ms:int32 5000
 set fetch_timeout_ms 10000
