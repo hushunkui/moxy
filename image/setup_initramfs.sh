@@ -18,18 +18,8 @@ KERN=$( uname --kernel-release )
 mkdir -p $BUILD
 mkdir -p $INITRAM
 
-
-function unpack () {
-  dir=$1
-  tgz=$2
-  if ! test -d $dir ; then
-    if ! test -f $tgz ; then
-      echo "error: no such file $tgz"
-      exit 1
-    fi
-    tar xvf $tgz
-  fi
-}
+# Include the build support library.
+source lib/support.sh
 
 
 if ! test -f $BUILD/busybox/bin/busybox ; then
