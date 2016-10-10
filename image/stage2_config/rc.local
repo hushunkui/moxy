@@ -37,6 +37,6 @@ nextboot=$(cat /proc/cmdline)
 nextboot="${nextboot##*epoxy.nextboot=}"
 nextboot="${nextboot%% *}"
 if test -n "$nextboot" ; then
-    echo epoxy-get -url $nextboot
-    epoxy-get -url $nextboot
+    echo epoxyget --post --url $nextboot
+    epoxyget --post --url $nextboot
 fi
