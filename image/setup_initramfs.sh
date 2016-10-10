@@ -63,14 +63,27 @@ if ! test -f $BUILD/kexec/sbin/kexec ; then
 fi
 
 
-if ! test -f $BUILD/epoxy-get ; then
+#if ! test -f $BUILD/epoxy-get ; then
+#    pushd $BUILD
+#        unpack go /moxy/vendor/go1.7.linux-${ARCH_ALT}.tar.gz
+#        export GOROOT=$BUILD/go
+#        export PATH=$PATH:$GOROOT/bin
+#
+#        CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go
+#        strip $BUILD/epoxy-get
+#    popd
+#fi
+
+if ! test -f $BUILD/epoxy/bin/epoxyget ; then
     pushd $BUILD
+        test -d epoxy || git clone git@github.com:stephen-soltesz/epoxy.git
         unpack go /moxy/vendor/go1.7.linux-${ARCH_ALT}.tar.gz
         export GOROOT=$BUILD/go
         export PATH=$PATH:$GOROOT/bin
+        export GOPATH=$PWD/epoxy
 
-        CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go
-        strip $BUILD/epoxy-get
+        CGO_ENABLED=0 go install epoxy/cmd/epoxyget
+        strip $BUILD/epoxy/bin/epoxyget
     popd
 fi
 
@@ -87,7 +100,7 @@ echo "Compressing binaries"
 mkdir -p $BUILD/upx_build
 for file in $BUILD/busybox/bin/busybox \
             $BUILD/dropbear/bin/dropbearmulti \
-            $BUILD/epoxy-get \
+            $BUILD/epoxy/bin/epoxyget \
             $BUILD/kexec/sbin/kexec ; do
     name=$(basename $file)
     if ! test -f $BUILD/upx_build/$name ; then
@@ -95,11 +108,11 @@ for file in $BUILD/busybox/bin/busybox \
     fi
 done
 
-#cp $BUILD/busybox/bin/busybox     $BUILD/upx_build
-#cp $BUILD/dropbear/bin/scp        $BUILD/upx_build
-#cp $BUILD/dropbear/sbin/dropbear  $BUILD/upx_build
-#cp $BUILD/epoxy-get               $BUILD/upx_build
-#cp $BUILD/kexec/sbin/kexec        $BUILD/upx_build
+cp $BUILD/busybox/bin/busybox     $BUILD/upx_build
+cp $BUILD/dropbear/bin/scp        $BUILD/upx_build
+cp $BUILD/dropbear/sbin/dropbear  $BUILD/upx_build
+cp $BUILD/epoxy/bin/epoxyget      $BUILD/upx_build
+cp $BUILD/kexec/sbin/kexec        $BUILD/upx_build
 
 echo "Setting up directory hierarchy"
 rm -rf $INITRAM
@@ -113,7 +126,7 @@ pushd $INITRAM
     mknod -m 622 dev/tty0 c 4 0
 
     cp $BUILD/upx_build/busybox       bin
-    cp $BUILD/upx_build/epoxy-get     bin
+    cp $BUILD/upx_build/epoxyget     bin
     cp $BUILD/upx_build/dropbearmulti bin
     cp $BUILD/upx_build/kexec         sbin
 
