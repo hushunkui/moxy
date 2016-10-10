@@ -1306,6 +1306,7 @@ CONFIG_HID_GENERIC=y
 # CONFIG_HID_ZEROPLUS is not set
 # CONFIG_HID_ZYDACRON is not set
 # CONFIG_HID_SENSOR_HUB is not set
+# CONFIG_HID_ALPS is not set
 
 #
 # I2C HID support
