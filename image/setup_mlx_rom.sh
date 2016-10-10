@@ -41,6 +41,7 @@ pushd $BUILD
     fi
 popd
 
+
 # TODO: Checkout operator.
 # TODO: Only generate scripts once.
 # Create all stage1.ipxe scripts.
@@ -51,7 +52,8 @@ pushd $BASEDIR/operator/plsync
 		--filename "${STAGE1_CONFIG_OUTDIR}/stage1-{{hostname}}.ipxe"
 popd
 
-VERSION=3.4.754
+
+VERSION=3.4.755
 CERTS="$CONFIG_DIR/epoxy-ca.pem,$CONFIG_DIR/giag2.pem"
 
 mkdir -p ${ROM_OUTDIR}/${VERSION}
