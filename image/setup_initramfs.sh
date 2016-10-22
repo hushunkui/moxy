@@ -63,27 +63,33 @@ if ! test -f $BUILD/kexec/sbin/kexec ; then
 fi
 
 
-#if ! test -f $BUILD/epoxy-get ; then
-#    pushd $BUILD
-#        unpack go /moxy/vendor/go1.7.linux-${ARCH_ALT}.tar.gz
-#        export GOROOT=$BUILD/go
-#        export PATH=$PATH:$GOROOT/bin
-#
-#        CGO_ENABLED=0 go build /moxy/epoxy-get/epoxy-get.go
-#        strip $BUILD/epoxy-get
-#    popd
-#fi
-
-if ! test -f $BUILD/epoxy/bin/epoxyget ; then
+if ! test -f $BUILD/epoxy/bin/epoxyget_386 ; then
     pushd $BUILD
         test -d epoxy || git clone git@github.com:stephen-soltesz/epoxy.git
-        unpack go /moxy/vendor/go1.7.linux-${ARCH_ALT}.tar.gz
+	# x86_64
+        unpack go /moxy/vendor/go1.7.linux-amd64.tar.gz
         export GOROOT=$BUILD/go
         export PATH=$PATH:$GOROOT/bin
-        export GOPATH=$PWD/epoxy
+        # export EPOXYDIR=$PWD/epoxy
+        export EPOXYDIR=/epoxy
+        export GOPATH=$EPOXYDIR
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install epoxy/cmd/epoxyget
+        strip ${EPOXYDIR}/bin/epoxyget
+        mv ${EPOXYDIR}/bin/epoxyget ${BUILD}/epoxy/bin/epoxyget_amd64
 
-        CGO_ENABLED=0 go install epoxy/cmd/epoxyget
-        strip $BUILD/epoxy/bin/epoxyget
+        GOOS=linux GOARCH=386 CGO_ENABLED=0 go install epoxy/cmd/epoxyget
+        strip ${EPOXYDIR}/bin/linux_386/epoxyget
+        mv ${EPOXYDIR}/bin/linux_386/epoxyget ${BUILD}/epoxy/bin/epoxyget_386
+
+	# i386
+        # unpack go /moxy/vendor/go1.7.linux-386.tar.gz
+        # mv go go386
+        # export GOROOT=$BUILD/go386
+        # export PATH=$PATH:$GOROOT/bin
+        # export GOPATH=$PWD/epoxy
+        # CGO_ENABLED=0 go install epoxy/cmd/epoxyget
+        # strip $BUILD/epoxy/bin/epoxyget
+        # mv $BUILD/epoxy/bin/epoxyget $BUILD/epoxy/bin/epoxyget-386
     popd
 fi
 
@@ -100,7 +106,8 @@ echo "Compressing binaries"
 mkdir -p $BUILD/upx_build
 for file in $BUILD/busybox/bin/busybox \
             $BUILD/dropbear/bin/dropbearmulti \
-            $BUILD/epoxy/bin/epoxyget \
+            $BUILD/epoxy/bin/epoxyget_amd64 \
+            $BUILD/epoxy/bin/epoxyget_386 \
             $BUILD/kexec/sbin/kexec ; do
     name=$(basename $file)
     if ! test -f $BUILD/upx_build/$name ; then
@@ -108,11 +115,12 @@ for file in $BUILD/busybox/bin/busybox \
     fi
 done
 
-cp $BUILD/busybox/bin/busybox     $BUILD/upx_build
-cp $BUILD/dropbear/bin/scp        $BUILD/upx_build
-cp $BUILD/dropbear/sbin/dropbear  $BUILD/upx_build
-cp $BUILD/epoxy/bin/epoxyget      $BUILD/upx_build
-cp $BUILD/kexec/sbin/kexec        $BUILD/upx_build
+cp $BUILD/busybox/bin/busybox      $BUILD/upx_build
+cp $BUILD/dropbear/bin/scp         $BUILD/upx_build
+cp $BUILD/dropbear/sbin/dropbear   $BUILD/upx_build
+cp $BUILD/epoxy/bin/epoxyget_amd64 $BUILD/upx_build
+cp $BUILD/epoxy/bin/epoxyget_386   $BUILD/upx_build
+cp $BUILD/kexec/sbin/kexec         $BUILD/upx_build
 
 echo "Setting up directory hierarchy"
 rm -rf $INITRAM
@@ -126,7 +134,12 @@ pushd $INITRAM
     mknod -m 622 dev/tty0 c 4 0
 
     cp $BUILD/upx_build/busybox       bin
-    cp $BUILD/upx_build/epoxyget     bin
+    if [[ "${ARCH}" = "x86_64" ]] ; then
+        cp $BUILD/upx_build/epoxyget_amd64      bin/epoxyget
+    else
+        cp $BUILD/upx_build/epoxyget_386        bin/epoxyget
+    fi
+    chmod 755 bin/epoxyget
     cp $BUILD/upx_build/dropbearmulti bin
     cp $BUILD/upx_build/kexec         sbin
 
