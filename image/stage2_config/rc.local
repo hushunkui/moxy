@@ -33,10 +33,13 @@ dropbear -g
 
 
 # Run epoxy-get using arg from cmdline.
-nextboot=$(cat /proc/cmdline)
-nextboot="${nextboot##*epoxy.nextboot=}"
-nextboot="${nextboot%% *}"
-if test -n "$nextboot" ; then
-    echo epoxyget --post --url $nextboot
-    epoxyget --post --url $nextboot
-fi
+# nextboot=$(cat /proc/cmdline)
+# nextboot="${nextboot##*epoxy.nextboot=}"
+# nextboot="${nextboot%% *}"
+# if test -n "$nextboot" ; then
+    # echo epoxyget --post --url $nextboot
+    # epoxyget --post --url $nextboot
+echo "STARTING NEXTSTAGE..."
+echo epoxyget --nextstage
+epoxyget --nextstage
+# fi
