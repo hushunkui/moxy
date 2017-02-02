@@ -27,6 +27,16 @@ echo "Starting syslog..."
 syslogd
 
 
+# We generate RSA since this is considered solid. But, RSA depends on a good
+# RNG, which may be weaker at first boot. DSA and ECDSA are considered suspect.
+# ED25519 is preferable but not supported by dropbear.
+/bin/dropbearkey -t rsa -s 4096 -f /etc/dropbear/dropbear_rsa_host_key
+/bin/dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep rsa > /etc/dropbear/dropbear_rsa_host_key.pub
+
+# TODO: publish ssh key.
+# epoxyget --public_ssh_host_key=/etc/dropbear/dropbear_rsa_host_key.pub
+
+
 echo "Starting dropbear..."
 # The "-g" option disables root login with password.
 dropbear -g
@@ -41,5 +51,5 @@ dropbear -g
     # epoxyget --post --url $nextboot
 echo "STARTING NEXTSTAGE..."
 echo epoxyget --nextstage
-epoxyget --nextstage
+epoxy-get --nextstage
 # fi
