@@ -7,31 +7,13 @@
  *
  */
 
-FILE_LICENCE ( GPL2_OR_LATER );
+FILE_LICENCE ( GPL2_OR_LATER_OR_UBDL );
 
 #include <config/defaults.h>
 
-/*
- * Branding
- *
- * Vendors may use these strings to add their own branding to iPXE.
- * PRODUCT_NAME is displayed prior to any iPXE branding in startup
- * messages, and PRODUCT_SHORT_NAME is used where a brief product
- * label is required (e.g. in BIOS boot selection menus).
- *
- * To minimise end-user confusion, it's probably a good idea to either
- * make PRODUCT_SHORT_NAME a substring of PRODUCT_NAME or leave it as
- * "iPXE".
- *
- */
-#define __BLD_VERSION__
 #ifndef __BUILD_VERSION__
-#define __BUILD_VERSION__	__DATE__"@"__TIME__
-#define __BASE_BUILD_VERSION__ "3.4.4xx"
+#define __BUILD_VERSION__ "3.4.700"
 #endif
-
-#define PRODUCT_NAME "Mellanox FlexBoot v" __BUILD_VERSION__
-#define PRODUCT_SHORT_NAME "MLNX FlexBoot " __BUILD_VERSION__
 
 /*
  * Banner timeout configuration
@@ -55,14 +37,16 @@ FILE_LICENCE ( GPL2_OR_LATER );
 #endif
 
 #define BANNER_TIMEOUT		0
+
 /*
  * Network protocols
  *
  */
 
 #define	NET_PROTO_IPV4		/* IPv4 protocol */
-#undef	NET_PROTO_IPV6		/* IPv6 protocol */
+#define	NET_PROTO_IPV6		/* IPv6 protocol */
 #undef	NET_PROTO_FCOE		/* Fibre Channel over Ethernet protocol */
+#define	NET_PROTO_STP		/* Spanning Tree protocol */
 
 /*
  * PXE support
@@ -92,6 +76,15 @@ FILE_LICENCE ( GPL2_OR_LATER );
 //#undef	SANBOOT_PROTO_AOE	/* AoE protocol */
 #undef		SANBOOT_PROTO_IB_SRP	/* Infiniband SCSI RDMA protocol */
 //#undef	SANBOOT_PROTO_FCP	/* Fibre Channel protocol */
+//#undef	SANBOOT_PROTO_HTTP	/* HTTP SAN protocol */
+
+/*
+ * HTTP extensions
+ *
+ */
+#undef HTTP_AUTH_BASIC		/* Basic authentication */
+#undef HTTP_AUTH_DIGEST	/* Digest authentication */
+//#define HTTP_ENC_PEERDIST	/* PeerDist content encoding */
 
 /*
  * 802.11 cryptosystems and handshaking protocols
@@ -136,7 +129,8 @@ FILE_LICENCE ( GPL2_OR_LATER );
 #undef	CONFIG_CMD		/* Option configuration console */
 #define	IFMGMT_CMD		/* Interface management commands */
 #undef	IWMGMT_CMD		/* Wireless interface management commands */
-#undef FCMGMT_CMD		/* Fibre Channel management commands */
+#undef	IBMGMT_CMD		/* Infiniband management commands */
+#undef	FCMGMT_CMD		/* Fibre Channel management commands */
 #define	ROUTE_CMD		/* Routing table management commands */
 #define IMAGE_CMD		/* Image management commands */
 #define DHCP_CMD		/* DHCP management commands */
@@ -166,6 +160,14 @@ FILE_LICENCE ( GPL2_OR_LATER );
  *
  */
 #undef	NONPNP_HOOK_INT19	/* Hook INT19 on non-PnP BIOSes */
+#define	AUTOBOOT_ROM_FILTER	/* Autoboot only devices matching our ROM */
+
+/*
+ * Virtual network devices
+ *
+ */
+#define VNIC_IPOIB		/* Infiniband IPoIB virtual NICs */
+//#define VNIC_XSIGO		/* Infiniband Xsigo virtual NICs */
 
 /*
  * Error message tables to include
@@ -180,7 +182,6 @@ FILE_LICENCE ( GPL2_OR_LATER );
  *
  */
 
-#define	NETDEV_DISCARD_RATE 0	/* Drop every N packets (0=>no drop) */
 #undef	BUILD_SERIAL		/* Include an automatic build serial
 				 * number.  Add "bs" to the list of
 				 * make targets.  For example:
@@ -191,6 +192,7 @@ FILE_LICENCE ( GPL2_OR_LATER );
 #undef	GDBSERIAL		/* Remote GDB debugging over serial */
 #undef	GDBUDP			/* Remote GDB debugging over UDP
 				 * (both may be set) */
+//#define EFI_DOWNGRADE_UX	/* Downgrade UEFI user experience */
 
 #include <config/named.h>
 #include NAMED_CONFIG(general.h)
