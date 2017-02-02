@@ -70,8 +70,8 @@ if ! test -f $BUILD/epoxy/bin/epoxyget_386 ; then
         unpack go /moxy/vendor/go1.7.linux-amd64.tar.gz
         export GOROOT=$BUILD/go
         export PATH=$PATH:$GOROOT/bin
-        # export EPOXYDIR=$PWD/epoxy
-        export EPOXYDIR=/epoxy
+        export EPOXYDIR=$PWD/epoxy
+        # export EPOXYDIR=/epoxy
         export GOPATH=$EPOXYDIR
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go install epoxy/cmd/epoxyget
         strip ${EPOXYDIR}/bin/epoxyget
@@ -147,7 +147,8 @@ pushd $INITRAM
     cp /usr/bin/strace                usr/bin/
 
     # Server SSH Keys
-    cp $BUILD/keys/*                  etc/dropbear
+    # TODO: remove when keys are generated at boot time.
+    # cp $BUILD/keys/*                  etc/dropbear
 
     # Certificates
     cp -L -r /etc/ssl/certs           etc/ssl
@@ -171,6 +172,7 @@ pushd $INITRAM
     # Make the first symlink from busybox to sh so /init can run.
     ln -s /bin/busybox          bin/sh
     ln -s /bin/dropbearmulti    bin/scp
+    ln -s /bin/dropbearmulti    bin/dropbearkey
     ln -s /bin/dropbearmulti    sbin/dropbear
 
     touch etc/mdev.conf
