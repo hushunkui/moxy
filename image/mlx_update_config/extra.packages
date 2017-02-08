@@ -5,3 +5,4 @@ systemd-sysv
 wget
 curl
 vim
+openssh-server
