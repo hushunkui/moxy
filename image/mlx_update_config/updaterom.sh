@@ -2,21 +2,33 @@
 
 set -x
 set -e
-# https://epoxy-test-1.measurementlab.net/v1/hosts/$HOSTNAME/ConnectX3.mrom
 
-ROMURL=$( cat /proc/cmdline | tr ' ' '\n' | grep -E 'epoxy.mrom=' | sed -e 's/epoxy.mrom=//g' )
-ACKURL=$( cat /proc/cmdline | tr ' ' '\n' | grep -E 'epoxy.nextboot_disable_url=' | sed -e 's/epoxy.nextboot_disable_url=//g' )
-if test -n "$ROMURL" ; then
-    echo "DOWNLOADING ROM"
-    eval "wget -O epoxy.mrom $ROMURL"
-    if ! test -f epoxy.mrom ; then
-        echo "Error: failed to download epoxy.mrom from $ROMURL"
-        exit 1
-    fi
+# TODO(soltesz): epoxyclient should download the ROM also.
+# e.g. epoxyclient --mrom <outfile>
+romurl=
+for field in $( cat /proc/cmdline ) ; do
+  if [[ "epoxy.mrom" == "${field%%=*}" ]] ; then
+    romurl=${field##epoxy.mrom=}
+    break
+  fi
+done
 
-    echo "UPDATING ROM"
-    /usr/local/util/flashrom.sh epoxy.mrom
-    
-    echo "ACKNOWLEDGE COMPLETE"
-    wget --quiet -O - --post-data='public_ssh_host_key=' $ACKURL > /dev/null
+if test -z "$romurl" ; then
+  echo "WARNING: no ROM URL found. Giving up."
+  exit 1
 fi
+
+echo "Downloading ROM"
+wget -O epoxy.mrom "${$romurl}"
+if ! test -f epoxy.mrom || ! test -s epoxy.mrom ; then
+    echo "Error: failed to download epoxy.mrom from ${romurl}"
+    exit 1
+fi
+
+echo "Updating ROM"
+/usr/local/util/flashrom.sh epoxy.mrom
+
+# TODO(soltesz): use `epoxyclient --endstage` to acknowldge.
+echo "WARNING: No not acknowledging success. Taking no action."
+
+echo "TODO: restart system on success."
