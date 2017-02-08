@@ -4,7 +4,12 @@ set -x
 set -e
 
 ROM=${1:?PXE ROM to burn to NIC}
-DEV=/dev/mst/mt4099_pci_cr0
+# TODO(soltesz): identify mt4103 if present.
+if [[ -e /dev/mst/mt4099_pci_cr0 ]] ; then
+    DEV=/dev/mst/mt4099_pci_cr0
+elif [[ -e /dev/mst/mt4103_pci_cr0 ]] ; then
+    DEV=/dev/mst/mt4103_pci_cr0
+fi
 ERROR_DELAY=60
 PAUSE=5
 
@@ -35,25 +40,33 @@ fi
 # NOTE: the long options are unfortunately different from the flint command.
 echo "Setting device options to PXE boot on PORT 1."
 mlxconfig --dev "${DEV}" -y -e set LEGACY_BOOT_PROTOCOL_P1=PXE
-mlxconfig --dev "${DEV}" -y -e set BOOT_OPTION_ROM_EN_P1=True 
+mlxconfig --dev "${DEV}" -y -e set BOOT_OPTION_ROM_EN_P1=True
 
 
 # Query before.
 echo "Before update"
 flint --device "$DEV" query
-mlxconfig --device "$DEV" query
+mlxconfig --dev "$DEV" query
 sleep $PAUSE
 
 # Burn ROM to NIC.
 echo "Performing update now..."
-flint --device "$DEV" brom "$ROM"
+# NOTE: we must specify --allow_rom_change to prevent this error on new NICs.
+#
+# "Burn ROM failed: The device FW contains common FW/ROM Product Version - The
+# ROM cannot be updated separately."
+#
+# While it's true that the "Product Version" is out of sync with a custom ROM,
+# we do not believe this matters.
+flint --allow_rom_change --device "$DEV" brom "$ROM"
 flint --device "$DEV" verify
 sleep $PAUSE
 
 # Query after.
 echo "After update"
 flint --device "$DEV" query
-mlxconfig --device "$DEV" query
+# mlxconfig does not support the long form "--device" flag.
+mlxconfig --dev "$DEV" query
 sleep $PAUSE
 
 # Extra verify that new ROM matches expected ROM.
