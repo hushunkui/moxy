@@ -1,36 +1,48 @@
 #!/bin/sh
 
 
-# Enable the mellanox something tools.
+# TODO: epoxyclient should interpret this command line parameter instead.
+function setup_network() {
+  # Set a default local network configuration.
+  ipcfg=192.168.0.2::192.168.0.1:255.255.255.0:default-net:eth0::8.8.8.8:
+
+  # Note: while using a generic kernel, we must wait for the modules to load
+  # automatically before the network configuration commands will work.  This
+  # delay could be avoided by explicitly loading the modules here (fragile) or
+  # using a custom kernel that embeds the mellanox drivers.
+  until ifconfig eth0 2> /dev/null ; do
+      echo "Waiting 1 second for eth0 to initialize.."
+      sleep 1
+  done
+
+  # Extract the epoxy.ip= boot parameter.
+  for field in $( cat /proc/cmdline ) ; do
+    if [[ "epoxy.ip" == "${field%%=*}" ]] ; then
+      ipcfg=${field##epoxy.ip=}
+      break
+    fi
+  done
+
+  echo "Applying network configuration: $ipcfg"
+  echo $ipcfg | tr ':' ' ' | (
+      read addr gateway netmask hostname device _
+      ifconfig $device $addr netmask $netmask
+      route add default gw $gateway
+      hostname $hostname
+  )
+  ifconfig eth0
+
+}
+
+
+echo "Starting mellanox tools."
 mst start
 
-# Try to setup networking.
-ping -c 1 www.google.com || (
-    echo "KERNEL COMMAND LINE:"
-    cat /proc/cmdline
-    echo "^^^^^^^^^^^^^^^^^^^"
-    until ifconfig eth0 2> /dev/null ; do
-        echo "Waiting 1 second for eth0 to initialize.."
-        sleep 1
-    done
-    ifconfig -a
-    IPCFG=$( cat /proc/cmdline | tr ' ' '\n' | grep -E 'ip=|epoxy.ip=' | sed -e 's/epoxy.ip=//g' | sed -e 's/ip=//g' )
-    if test -n "$IPCFG" ; then
-        echo $IPCFG | tr ':' ' ' | ( read IP GW NM HN DEV _
-            ifconfig $DEV $IP netmask $NM
-            route add default gw $GW
-            hostname $HN
-        )
-    else
-        echo "Sorry -- no IP configuration. Trying to use default."
-        ifconfig eth0 192.168.0.107 netmask 255.255.255.0
-        route add default gw 192.168.0.1
-    fi
-)
 
-# Start ssh server after network is up.
-# /sbin/dropbear
-# ip=192.168.0.112::192.168.0.1:255.255.255.0:mlab.local:eth0:false:8.8.8.8:8.8.4.4
+echo "Configuring network..."
+setup_network
 
-echo "TRYING UPDATE"
-# /usr/local/util/updaterom.sh
+
+# TODO(soltesz): enable automatic rom update.
+echo "WARNING: the ROM update is not yet complete."
+echo "WARNING: to complete update, run: /usr/local/util/updaterom.sh"
