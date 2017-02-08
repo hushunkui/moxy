@@ -1,7 +1,8 @@
 #!ipxe
 
 # Global settings.
-set epoxyaddress epoxy-test-1.measurementlab.net:443
+# TODO(soltesz): how to make this address configurable?
+set epoxyaddress boot-api-dot-mlab-staging.appspot.com
 
 set menu_timeout_ms:int32 5000
 set fetch_timeout_ms 10000
@@ -18,7 +19,7 @@ set net0/dns {{dns1}}
 set hostname {{hostname}}
 
 # The ePoxy nextboot URL.
-set nextboot_url https://${epoxyaddress}/v1/hosts/${ip}/stage2.ipxe
+set nextboot_url https://${epoxyaddress}/v1/boot/${hostname}/stage2.ipxe
 
 ########################################
 # Boot menu.
