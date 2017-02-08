@@ -29,8 +29,8 @@ ping -c 1 www.google.com || (
 )
 
 # Start ssh server after network is up.
-/sbin/dropbear
+# /sbin/dropbear
 # ip=192.168.0.112::192.168.0.1:255.255.255.0:mlab.local:eth0:false:8.8.8.8:8.8.4.4
 
 echo "TRYING UPDATE"
-/usr/local/util/updaterom.sh
+# /usr/local/util/updaterom.sh
