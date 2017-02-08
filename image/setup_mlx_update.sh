@@ -61,7 +61,7 @@ fi
 
 enter_with_proc $BOOTSTRAP
     # Extra packages needed for correct operation.
-    PACKAGES=$( cat mlx_config/extra.packages )
+    PACKAGES=$( cat mlx_update_config/extra.packages )
     chroot $BOOTSTRAP apt-get install -y $PACKAGES
 exit_with_proc $BOOTSTRAP
 
@@ -69,7 +69,7 @@ exit_with_proc $BOOTSTRAP
 if ! test -f $BOOTSTRAP/lib/modules/${KERN}/updates/dkms/mst_pci.ko ; then
 enter_with_proc $BOOTSTRAP
 
-    PACKAGES=$( cat mlx_config/build.packages )
+    PACKAGES=$( cat mlx_update_config/build.packages )
     chroot $BOOTSTRAP apt-get install -y $PACKAGES
 
     # Run the mlx firmware tools installation script.
@@ -108,6 +108,8 @@ cp $CONFDIR/fstab       $BOOTSTRAP/etc/fstab
 # Set a default root passwd.
 chroot $BOOTSTRAP bash -c 'echo -e "demo\ndemo\n" | passwd'
 
+# TODO: disable root login via ssh.
+
 
 # Enable simple rc.local script for post-setup processing.
 # rc.local.service runs after networking.service
@@ -130,11 +132,11 @@ enter_with_proc $BOOTSTRAP
 exit_with_proc $BOOTSTRAP
 
 
-echo "Setting up directory hierarchy"
-mkdir -p $BOOTSTRAP/etc/dropbear
-cp $BUILD/dropbear/sbin/dropbear $BOOTSTRAP/sbin
-cp $BUILD/dropbear/bin/scp $BOOTSTRAP/bin
-cp $BUILD/keys/* $BOOTSTRAP/etc/dropbear
+# echo "Setting up directory hierarchy"
+# mkdir -p $BOOTSTRAP/etc/dropbear
+# cp $BUILD/dropbear/sbin/dropbear $BOOTSTRAP/sbin
+# cp $BUILD/dropbear/bin/scp $BOOTSTRAP/bin
+# cp $BUILD/keys/* $BOOTSTRAP/etc/dropbear
 
 
 echo "Adding SSH authorized keys"
@@ -144,17 +146,17 @@ chown root:root $BOOTSTRAP/root/.ssh/authorized_keys
 chmod 700 $BOOTSTRAP/root/
 
 
-if ! test -f $BOOTSTRAP/usr/local/util/updaterom.sh ; then
+if ! test -d $BOOTSTRAP/usr/local/util ; then
     pushd $BUILD
         test -d ipxe || git clone git://git.ipxe.org/ipxe.git
         pushd ipxe/src
           make util/zbin
           cp -ar util $BOOTSTRAP/usr/local/
-          cp $CONFDIR/flashrom.sh $BOOTSTRAP/usr/local/util
-          cp $CONFDIR/updaterom.sh $BOOTSTRAP/usr/local/util
         popd
     popd
 fi
+cp $CONFDIR/flashrom.sh $BOOTSTRAP/usr/local/util
+cp $CONFDIR/updaterom.sh $BOOTSTRAP/usr/local/util
 
 
 pushd $BOOTSTRAP
