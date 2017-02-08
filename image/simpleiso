@@ -66,11 +66,12 @@ fi
 cat > ${cfg} <<EOF
 # These default options can be changed in the geniso script
 SAY ePoxy ISO boot image -- $OUT
+SAY Extra args: $EXTRAARGS
 TIMEOUT 30
 DEFAULT linux
 
 LABEL linux
- KERNEL vmlinuz 
+ KERNEL vmlinuz
  $INITRD
  APPEND $EXTRAARGS
 EOF
