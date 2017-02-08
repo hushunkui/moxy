@@ -63,6 +63,29 @@ if ! test -f $BUILD/kexec/sbin/kexec ; then
 fi
 
 
+if ! test -f $BUILD/rng-tools/sbin/rngd ; then
+    pushd $BUILD
+        unpack rng-tools-5 /moxy/vendor/rng-tools-5.tar.gz
+        pushd rng-tools-5
+            LDFLAGS="-static" ./configure --prefix=$BUILD/rng-tools
+            make
+            make install
+        popd
+    popd
+fi
+
+if ! test -f $BUILD/haveged/sbin/haveged ; then
+    pushd $BUILD
+        unpack haveged-1.9.1 /moxy/vendor/haveged-1.9.1.tar.gz
+        pushd haveged-1.9.1
+            ./configure --prefix=$BUILD/haveged --enable-static
+            make
+            make install
+        popd
+    popd
+fi
+
+
 if ! test -f $BUILD/epoxy/bin/epoxyget_386 ; then
     pushd $BUILD
         test -d epoxy || git clone git@github.com:stephen-soltesz/epoxy.git
@@ -108,26 +131,28 @@ for file in $BUILD/busybox/bin/busybox \
             $BUILD/dropbear/bin/dropbearmulti \
             $BUILD/epoxy/bin/epoxyget_amd64 \
             $BUILD/epoxy/bin/epoxyget_386 \
-            $BUILD/kexec/sbin/kexec ; do
+            $BUILD/kexec/sbin/kexec \
+            $BUILD/haveged/sbin/haveged \
+            $BUILD/rng-tools/sbin/rngd ; do
     name=$(basename $file)
     if ! test -f $BUILD/upx_build/$name ; then
         upx --brute -o$BUILD/upx_build/$name $file
     fi
 done
 
-cp $BUILD/busybox/bin/busybox      $BUILD/upx_build
-cp $BUILD/dropbear/bin/scp         $BUILD/upx_build
-cp $BUILD/dropbear/sbin/dropbear   $BUILD/upx_build
-cp $BUILD/epoxy/bin/epoxyget_amd64 $BUILD/upx_build
-cp $BUILD/epoxy/bin/epoxyget_386   $BUILD/upx_build
-cp $BUILD/kexec/sbin/kexec         $BUILD/upx_build
+#cp $BUILD/busybox/bin/busybox      $BUILD/upx_build
+#cp $BUILD/dropbear/bin/scp         $BUILD/upx_build
+#cp $BUILD/dropbear/sbin/dropbear   $BUILD/upx_build
+#cp $BUILD/epoxy/bin/epoxyget_amd64 $BUILD/upx_build
+#cp $BUILD/epoxy/bin/epoxyget_386   $BUILD/upx_build
+#cp $BUILD/kexec/sbin/kexec         $BUILD/upx_build
 
 echo "Setting up directory hierarchy"
 rm -rf $INITRAM
 mkdir -p $INITRAM
 pushd $INITRAM
     mkdir -p {tmp,bin,sbin,etc/ssl,etc/dropbear,lib/${ARCH}-linux-gnu,lib64}
-    mkdir -p {proc,sys,var/log,dev/pts,root/.ssh,newroot,usr/bin,usr/sbin}
+    mkdir -p {proc,sys,var/run,var/log,dev/pts,root/.ssh,newroot,usr/bin,usr/sbin}
     chmod 700 root
 
     mknod -m 622 dev/console c 5 1
@@ -142,6 +167,10 @@ pushd $INITRAM
     chmod 755 bin/epoxyget
     cp $BUILD/upx_build/dropbearmulti bin
     cp $BUILD/upx_build/kexec         sbin
+
+    # Help generate more entropy for /dev/random.
+    cp $BUILD/upx_build/rngd          sbin
+    cp $BUILD/upx_build/haveged       sbin
 
     # Debug binary.
     cp /usr/bin/strace                usr/bin/
